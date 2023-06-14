@@ -20,6 +20,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import io.keyss.view_record.ISourceProvider
 import io.keyss.view_record.RecordEncoder
 import io.keyss.view_record.RecordViewUtil
+import io.keyss.view_record.VRLogger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
             stopRecord()
         }
         initFunc()
+        VRLogger.logLevel = Log.DEBUG
         checkPermission()
     }
 
@@ -107,6 +109,24 @@ class MainActivity : AppCompatActivity() {
                 kotlinx.coroutines.delay(1000)
             }
         }
+        //method1(view)
+        method2(view)
+
+        //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
+        //mRecordEncoder.start()
+    }
+
+    private fun method2(view: View) {
+        mRecordEncoder.start(
+            window,
+            view,
+            isRecordAudio = false
+        ) { isSuccessful: Boolean, result: String ->
+            Log.w(TAG, "onResult() isSuccessful: $isSuccessful, result: $result")
+        }
+    }
+
+    private fun method1(view: View) {
         val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
         mLastRecordFile = outputFile
         Log.i(TAG, "startRecord() outputFile: ${outputFile.absolutePath}")
@@ -120,9 +140,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         mRecordEncoder.start(sourceProvider, outputFile, 1024_000, true)
-
-        //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
-        //mRecordEncoder.start()
     }
 
     private fun stopRecord() {

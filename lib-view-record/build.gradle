@@ -3,7 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-ext.libVersion = "1.0.0"
+ext.libVersion = "1.0.1"
 
 android {
     namespace 'io.keyss.view_record'
