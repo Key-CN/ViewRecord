@@ -21,6 +21,7 @@ object RecordViewUtil {
     private const val TAG = "RecordViewUtil"
     private val mMainHandler = Handler(Looper.getMainLooper())
 
+    @Throws
     fun getBitmapFromView(window: Window, targetView: View, width: Int? = null): Bitmap {
         val finalWidth = width ?: targetView.width
         if (finalWidth <= 0) {
@@ -31,14 +32,13 @@ object RecordViewUtil {
         } else {
             convertViewToBitmap(targetView, finalWidth)
         }
-
-        //return convertViewToBitmap(targetView, width ?: targetView.width)
     }
 
     /**
      * 这个宽高啥的先不管他，到时候再来看看要不要优化吧。
      */
     @Suppress("DEPRECATION")
+    @Throws
     fun convertViewToBitmap(targetView: View, width: Int): Bitmap {
         // 优化宽高
         val recordWidth = if (width % 2 != 0) {
@@ -75,6 +75,7 @@ object RecordViewUtil {
      * @param targetView 只是为了算坐标，没其他用
      */
     @RequiresApi(Build.VERSION_CODES.O)
+    @Throws
     fun copyPixelFromView(window: Window, targetView: View, width: Int): Bitmap {
         // 优化宽高
         val recordWidth = if (width % 2 != 0) {

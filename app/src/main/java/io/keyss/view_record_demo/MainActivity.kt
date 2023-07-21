@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
             stopRecord()
         }
         initFunc()
-        VRLogger.logLevel = Log.DEBUG
+        VRLogger.logLevel = Log.VERBOSE
         checkPermission()
     }
 

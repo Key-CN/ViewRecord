@@ -2,7 +2,9 @@
 
 ### Description
 Android View Record: Screen Record, Video Record, Audio Record
-安卓录屏，或者说app内录屏，避开隐私问题，不会录到系统通知或者其他系统级弹窗或者各种类似下拉状态栏等会遮盖的之类的画面，当初也是为了实现这个需求开发的这个功能，View级别的录屏，你可以录整个RootContentView，也可以是只录某个ViewGroup或者View，支持同时录音
+安卓录屏，或者说app内录屏，避开隐私问题，不会录到系统通知或者其他系统级弹窗或者各种类似下拉状态栏等会遮盖的之类的画面，当初也是为了实现这个需求造的这个轮子（苦于搜遍GitHub都没搜到，不然也懒得写了），View级别的录屏，你可以录整个RootContentView，也可以是只录某个ViewGroup或者View，支持同时录音
+
+> 注释保留了很多，因为本身也是边学习边输出，出于交流分享共同学习的目的，保留了注释，方便大家理解和避开一些坑
 
 ### Usage
 具体可以参照Demo，MainActivity中的调用
@@ -31,7 +33,20 @@ mRecordEncoder.start(sourceProvider, outputFile, 1024_000, true)
 // 方案2: 先设定好参数，在业务处启动
 mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
 mRecordEncoder.start()
+// 方案3: 无需读写权限，等结束回调返回路径
+mRecordEncoder.start(
+   window,
+   view,
+   isRecordAudio = false
+) { isSuccessful: Boolean, result: String ->
+   Log.w(TAG, "onResult() isSuccessful: $isSuccessful, result: $result")
+}
 ```
+5. 要排查问题可以打开日志输出
+```kotlin
+VRLogger.logLevel = Log.VERBOSE 或者 Log.DEBUG 级别
+```
+
 
 ### 优点：
 1. 不需要权限，主要说得是录屏的那个敏感权限弹窗。如果需要录音，那录音权限还是需要的。

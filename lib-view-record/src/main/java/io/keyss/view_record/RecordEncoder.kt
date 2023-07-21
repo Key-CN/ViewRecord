@@ -89,6 +89,7 @@ class RecordEncoder {
     ////// Audio
     private var isRecordAudio: Boolean = false
     private lateinit var mAudioRecord: AudioRecord
+    private var isAudioRecordReleased = false
     private lateinit var mAudioMediaCodec: MediaCodec
     private val mAudioBufferInfo = MediaCodec.BufferInfo()
     private var mAudioTrackIndex = -1
@@ -150,7 +151,13 @@ class RecordEncoder {
         ////////////////////////////////////////////////
         isRunning = true
         thread {
-            val bitmap = mSourceProvider.next()
+            val bitmap = try {
+                mSourceProvider.next()
+            } catch (e: Exception) {
+                VRLogger.e("初始化错误: 第一次取bitmap异常", e)
+                onError("初始化错误：无法获取到屏幕图像或者超过内存大小")
+                return@thread
+            }
             try {
                 init(bitmap.width, bitmap.height, mVideoBitRate)
             } catch (e: Exception) {
@@ -200,7 +207,8 @@ class RecordEncoder {
             }
         }
         // 确认文件路径可用性
-        var finalOutputFile = outputFile ?: File(view.context.externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
+        var finalOutputFile =
+            outputFile ?: File(view.context.externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
         try {
             if (finalOutputFile.exists()) {
                 if (finalOutputFile.isFile) {
@@ -246,6 +254,7 @@ class RecordEncoder {
                 }
                 VRLogger.i("finish() called, MediaMuxer release")
             }
+            onResult(true, mOutputFile.absolutePath)
         } catch (e: Exception) {
             e.printStackTrace()
             onResult(false, "录制结束失败：${e.message}")
@@ -279,6 +288,7 @@ class RecordEncoder {
         mAudioBuffer = ByteArray(mAudioBufferSize)
         // 初始化AudioRecord实例
         mAudioRecord = AudioRecord(audioSource, audioSampleRate, channelConfig, audioFormat, mAudioBufferSize)
+        isAudioRecordReleased = false
         // codec
         val audioFormat = MediaFormat.createAudioFormat(audioMimeType, audioSampleRate, audioChannelCount)
         audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, audioBitRate) // 音频比特率
@@ -296,11 +306,11 @@ class RecordEncoder {
         setColorFormat()
         mVideoRecordConfig = VideoRecordConfig(
             videoMimeType = videoMimeType,
+            colorFormat = mColorFormat,
             outWidth = width,
             outHeight = height,
-            colorFormat = mColorFormat,
             bitRate = minBitRate,
-            mFrameRate = frameRate,
+            frameRate = frameRate,
             iFrameInterval = iFrameInterval
         )
     }
@@ -353,10 +363,17 @@ class RecordEncoder {
                 MediaCodec.BUFFER_FLAG_END_OF_STREAM
             }
             // 压入缓冲区，准备编码
-            mVideoRecordConfig.videoMediaCodec.queueInputBuffer(inputBufferIndex, 0, inputData.size, ptsUsec, inputFlags)
+            mVideoRecordConfig.videoMediaCodec.queueInputBuffer(
+                inputBufferIndex,
+                0,
+                inputData.size,
+                ptsUsec,
+                inputFlags
+            )
             while (true) {
                 // Returns the index of an output buffer that has been successfully decoded or one of the INFO_* constants.
-                val outputBufferIndex = mVideoRecordConfig.videoMediaCodec.dequeueOutputBuffer(mVideoBufferInfo, defaultTimeOutUs)
+                val outputBufferIndex =
+                    mVideoRecordConfig.videoMediaCodec.dequeueOutputBuffer(mVideoBufferInfo, defaultTimeOutUs)
                 VRLogger.v(
                     "输出: 第${mVideoRecordConfig.generateVideoFrameIndex}帧数据, outputBufferIndex=[$outputBufferIndex], inputFlags=[$inputFlags], buffer.flags=[${mVideoBufferInfo.flags}], buffer.size=[${mVideoBufferInfo.size}], isVideoStarted=$isVideoStarted"
                 )
@@ -369,7 +386,8 @@ class RecordEncoder {
                     }
                     mLastFrameTime = currentTimeMillis
                     // 取数据
-                    val outputBuffer = (mVideoRecordConfig.videoMediaCodec.getOutputBuffer(outputBufferIndex)) ?: continue // 取失败的话先丢一帧试试，不直接抛异常结束
+                    val outputBuffer = (mVideoRecordConfig.videoMediaCodec.getOutputBuffer(outputBufferIndex))
+                        ?: continue // 取失败的话先丢一帧试试，不直接抛异常结束
 
                     // 这表明标记为此类的缓冲区包含编解码器初始化/编解码器特定数据而不是媒体数据。只会伴随着index=-2出现: 0 != 2 , 2 != 2(2是配置帧), 1 != 2(1是Key frame)
                     VRLogger.v(
@@ -386,7 +404,11 @@ class RecordEncoder {
                             outputBuffer.limit(mVideoBufferInfo.offset + mVideoBufferInfo.size)
                             // isMuxerStarted应该包在这里，把数据取出来丢掉
                             if (isMuxerStarted) {
-                                mMediaMuxer.writeSampleData(mVideoRecordConfig.videoTrackIndex, outputBuffer, mVideoBufferInfo)
+                                mMediaMuxer.writeSampleData(
+                                    mVideoRecordConfig.videoTrackIndex,
+                                    outputBuffer,
+                                    mVideoBufferInfo
+                                )
                             }
                             mVideoRecordConfig.generateVideoFrameIndex++
                             // 输入渲染，释放
@@ -429,7 +451,8 @@ class RecordEncoder {
                             // 等于二次开始，第二次开始应该是需要flush然后再重开的
                             error { "format changed twice" }
                         }
-                        mVideoRecordConfig.videoTrackIndex = mMediaMuxer.addTrack(mVideoRecordConfig.videoMediaCodec.outputFormat)
+                        mVideoRecordConfig.videoTrackIndex =
+                            mMediaMuxer.addTrack(mVideoRecordConfig.videoMediaCodec.outputFormat)
                         startMuxer()
                     }
 
@@ -443,7 +466,8 @@ class RecordEncoder {
                 }
             }
         }
-        onResult(true, mOutputFile.absolutePath)
+        // 在这里的回调里删除文件，会导致MediaMuxer停止释放失败，已改到finish中MediaMuxer释放之后
+        // 但这在前段事件会有延迟，但不明显，如果明显，需要自己加loading UI或者其他处理
         // 外面会调finish，防止异常
     }
 
@@ -456,7 +480,12 @@ class RecordEncoder {
         val bitmap = mSourceProvider.next()
         VRLogger.v("提取完bitmap, size=${bitmap.byteCount / 1024}KB, 耗时=${System.currentTimeMillis() - start}ms")
         // 需要时间，400宽的都要10ms左右，1024*1024 S9耗时50ms左右，如果异步按帧率取，内存可能会爆炸， 800*800耗时21ms
-        val inputData: ByteArray = EncoderTools.getPixels(mColorFormat, mVideoRecordConfig.outWidth, mVideoRecordConfig.outHeight, bitmap)
+        val inputData: ByteArray = EncoderTools.getPixels(
+            mVideoRecordConfig.colorFormat,
+            mVideoRecordConfig.outWidth,
+            mVideoRecordConfig.outHeight,
+            bitmap
+        )
         VRLogger.v("从bitmap提取像素 ${System.currentTimeMillis() - start}ms")
         bitmap.recycle()
         return inputData
@@ -472,6 +501,7 @@ class RecordEncoder {
             } finally {
                 mAudioRecord.stop()
                 mAudioRecord.release()
+                isAudioRecordReleased = true
                 if (::mAudioMediaCodec.isInitialized) {
                     /*try {
                         mAudioMediaCodec.signalEndOfInputStream()
@@ -489,7 +519,8 @@ class RecordEncoder {
         isAudioStarted = true
         // 启动在20ms左右
         mAudioRecord.startRecording()
-        while (isAudioStarted) {
+        // 如果AudioRecord被错误释放，则没必要再继续录制
+        while (isAudioStarted && !isAudioRecordReleased) {
             val start = System.currentTimeMillis()
             val sampleSize = mAudioRecord.read(mAudioBuffer, 0, mAudioBufferSize)
             VRLogger.v("sampleSize = ${sampleSize}, 每次read耗时：${System.currentTimeMillis() - start}ms")
@@ -504,6 +535,7 @@ class RecordEncoder {
         }
         // If this buffer is not a direct buffer, this method will always return 0
         // so 0怎么处理？应该不会出现
+        // fixme 出现了，可能是mAudioRecord被释放了，但是还在录制，所以这里会一直返回0，也可能是其他情况
         if (size <= 0) {
             VRLogger.e("audio read size小于0: [$size]")
             return
@@ -585,7 +617,11 @@ class RecordEncoder {
     }
 
     private fun startMuxer() {
-        if (!isMuxerStarted && min(mVideoRecordConfig.videoTrackIndex, if (isRecordAudio) mAudioTrackIndex else 1) >= 0) {
+        if (!isMuxerStarted && min(
+                mVideoRecordConfig.videoTrackIndex,
+                if (isRecordAudio) mAudioTrackIndex else 1
+            ) >= 0
+        ) {
             mMediaMuxer.start()
             isMuxerStarted = true
             VRLogger.i("MediaMuxer start, VideoTrackIndex=${mVideoRecordConfig.videoTrackIndex}, AudioTrackIndex=${mAudioTrackIndex}")

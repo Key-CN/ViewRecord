@@ -3,7 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-ext.libVersion = "1.0.1"
+ext.libVersion = "1.0.2"
 
 android {
     namespace 'io.keyss.view_record'
@@ -33,7 +33,7 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.annotation:annotation:1.6.0'
+    compileOnly 'androidx.annotation:annotation:1.6.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
