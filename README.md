@@ -6,6 +6,24 @@ Android View Record: Screen Record, Video Record, Audio Record
 
 > 注释保留了很多，因为本身也是边学习边输出，出于交流分享共同学习的目的，保留了注释，方便大家理解和避开一些坑
 
+### Nov 23 2023 新增一个录制类 ViewRecorder
+**高可用，比我之前写的那个兼容性要好，暂时项目中先用这个**
+不过因为也是临时用，又紧急，所以一些可配置下项我暂时还没抽出来，只根据自己项目需要写死了值
+
+借用了pedroSG94在他的RootEncoder推流项目中的录制编码部分类进行修改
+感谢大佬的开源分享，项目地址：https://github.com/pedroSG94/RootEncoder
+原版本在机型兼容性上存在一些问题，由于比较紧急，暂时没时间调试，所以先在该项目基础上写一版能用的，这个项目考虑的还是比较完整的。
+
+他的代码已经写的很好了，不过很复杂不便于学习，我足足看了两天，interface很绕，我删除了部分他推流用的功能，做了些许精简
+他的项目是流，所以使用的是ArrayBlockingQueue，而我是实时采集，所以Video这部分我加了判断但还没有删除，Audio部分则是删除了。
+后面有时间继续学习他的编码部分，完善下我这个简单的单纯的录屏功能
+中间还参考了两个项目，一个微软的，一个chromium的
+https://github.com/microsoft/HydraLab/blob/b50bc6054d32a1b83d6c944ef9fbd393150922ab/android_client/app/src/main/java/com/microsoft/hydralab/android/client/BaseEncoder.java
+https://github.com/chromium/chromium/blob/0ddb38eda131f19995ec537bc67b62d35170e2ab/media/base/android/java/src/org/chromium/media/MediaCodecUtil.java
+能参考的项目基本上都是推流中使用的。
+chromium中对硬编部分，做了CPU判断，从我的代码上线至今收集到的日志，应该是有点关系的。后续我也会跟进完善
+
+
 ### Usage
 具体可以参照Demo，MainActivity中的调用
 1. 实现```ISourceProvider```接口

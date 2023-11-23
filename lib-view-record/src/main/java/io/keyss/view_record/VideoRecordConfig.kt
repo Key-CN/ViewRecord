@@ -2,6 +2,7 @@ package io.keyss.view_record
 
 import android.media.MediaCodec
 import android.media.MediaFormat
+import io.keyss.view_record.utils.VRLogger
 import kotlin.math.max
 
 data class VideoRecordConfig(
@@ -42,7 +43,6 @@ data class VideoRecordConfig(
         mediaFormat.setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval)
         videoMediaCodec = MediaCodec.createEncoderByType(videoMimeType)
         videoMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        videoMediaCodec.start()
         VRLogger.d(
             "initVideoConfig: fps=$frameRate, BitRate=$bitRate, outputFormat=${videoMediaCodec.outputFormat}, width = $outWidth, height = $outHeight"
         )

@@ -59,4 +59,10 @@ dependencies {
     //implementation "androidx.camera:camera-mlkit-vision:${camerax_version}"
     // If you want to additionally use the CameraX Extensions library
     //implementation "androidx.camera:camera-extensions:${camerax_version}"
+    // 完整版
+    //implementation 'com.github.CarGuo.GSYVideoPlayer:GSYVideoPlayer:v8.4.0-release-jitpack'
+    //implementation 'com.github.CarGuo.GSYVideoPlayer:gsyVideoPlayer-java:v8.4.0-release-jitpack'
+    //implementation 'com.github.CarGuo.GSYVideoPlayer:GSYVideoPlayer-exo2:v8.4.0-release-jitpack'
+    // exo
+    //implementation 'com.google.android.exoplayer:exoplayer:2.19.0'
 }

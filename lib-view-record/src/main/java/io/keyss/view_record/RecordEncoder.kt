@@ -12,6 +12,9 @@ import android.os.SystemClock
 import android.view.View
 import android.view.Window
 import androidx.annotation.RequiresPermission
+import io.keyss.view_record.utils.EncoderTools
+import io.keyss.view_record.utils.RecordViewUtil
+import io.keyss.view_record.utils.VRLogger
 import java.io.File
 import kotlin.concurrent.thread
 import kotlin.math.min

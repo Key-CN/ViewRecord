@@ -18,9 +18,11 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.ListenableFuture
 import io.keyss.view_record.ISourceProvider
-import io.keyss.view_record.RecordEncoder
-import io.keyss.view_record.RecordViewUtil
-import io.keyss.view_record.VRLogger
+import io.keyss.view_record.RecordAsyncEncoder
+import io.keyss.view_record.recording.RecordController
+import io.keyss.view_record.recording.ViewRecorder
+import io.keyss.view_record.utils.RecordViewUtil
+import io.keyss.view_record.utils.VRLogger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -39,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
     private var mTimerJob: Job? = null
-    private val mRecordEncoder = RecordEncoder()
+    private val mRecordEncoder = RecordAsyncEncoder()
     private var mLastRecordFile: File? = null
 
     // 需要的权限列表
@@ -69,24 +71,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initFunc() {
-        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            //
-            Log.d(TAG, "requestPermissionLauncher request Permission result isGranted=$isGranted")
-            /*if (isGranted) {
-                // Permission is granted. Continue the action or workflow in your app.
-                startPreview()
-            } else {
-                // Explain to the user that the feature is unavailable because the
-                // feature requires a permission that the user has denied. At the
-                // same time, respect the user's decision. Don't link to system
-                // settings in an effort to convince the user to change their
-                // decision.
-                // 向用户解释该功能不可用，因为该功能需要用户拒绝的权限。 同时尊重用户的决定。 不要链接到系统设置以说服用户改变他们的决定。
+        requestPermissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+                //
+                Log.d(TAG, "requestPermissionLauncher request Permission result isGranted=$isGranted")
+                /*if (isGranted) {
+                    // Permission is granted. Continue the action or workflow in your app.
+                    startPreview()
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // feature requires a permission that the user has denied. At the
+                    // same time, respect the user's decision. Don't link to system
+                    // settings in an effort to convince the user to change their
+                    // decision.
+                    // 向用户解释该功能不可用，因为该功能需要用户拒绝的权限。 同时尊重用户的决定。 不要链接到系统设置以说服用户改变他们的决定。
+                    checkPermission()
+                }*/
+                // 需要再次检测，同时满足两个权限
                 checkPermission()
-            }*/
-            // 需要再次检测，同时满足两个权限
-            checkPermission()
-        }
+            }
 
         // todo 补充一个一次请求多个权限的方法
         /*val requestMultiplePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){
@@ -110,10 +113,36 @@ class MainActivity : AppCompatActivity() {
             }
         }
         //method1(view)
-        method2(view)
+        //method2(view)
+        //method3(view)
+        method4(view)
 
         //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
         //mRecordEncoder.start()
+    }
+
+    val viewRecord = ViewRecorder()
+    private fun method4(view: View) {
+        viewRecord.init(window, view, 540)
+        val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
+        mLastRecordFile = outputFile
+        Log.i(TAG, "startRecord() outputFile: ${outputFile.absolutePath}")
+        viewRecord.startRecord(outputFile.absolutePath, object : RecordController.Listener {
+            override fun onStatusChange(status: RecordController.Status?) {
+                Log.i(TAG, "onStatusChange() called with: status = $status")
+            }
+        })
+    }
+
+    private fun stopMethod4(): Unit {
+        viewRecord.stopRecord()
+    }
+
+    private fun stopMethod3(): Unit {
+    }
+
+    private fun method3(view: View) {
+
     }
 
     private fun method2(view: View) {
@@ -143,7 +172,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopRecord() {
-        mRecordEncoder.stop()
+        //mRecordEncoder.stop()
+        stopMethod4()
         mTimerJob?.cancel()
         mTimerJob = null
         Log.i(TAG, "stopRecord() mLastRecordFile: ${mLastRecordFile?.absolutePath}")
@@ -151,7 +181,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkPermission() {
         permissionMap.keys.forEach {
-            permissionMap[it] = ContextCompat.checkSelfPermission(this, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            permissionMap[it] =
+                ContextCompat.checkSelfPermission(this, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
         }
         Log.i(TAG, "checkPermission(): $permissionMap")
         // 全部都是true有权限
@@ -178,7 +209,10 @@ class MainActivity : AppCompatActivity() {
      */
     private fun tryRequestOnePermission(permission: String, isExplained: Boolean = false) {
         val shouldShowRequestPermissionRationale = shouldShowRequestPermissionRationale(permission)
-        Log.d(TAG, "请求单个权限(${permission}) 需要展示请求权限的理由吗？=$shouldShowRequestPermissionRationale，是否已展示过理由=$isExplained")
+        Log.d(
+            TAG,
+            "请求单个权限(${permission}) 需要展示请求权限的理由吗？=$shouldShowRequestPermissionRationale，是否已展示过理由=$isExplained"
+        )
         if (shouldShowRequestPermissionRationale) {
             // 向用户显示指导界面，在此界面中说明用户希望启用的功能为何需要特定权限。
             if (isExplained) {

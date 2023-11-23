@@ -1,4 +1,4 @@
-package io.keyss.view_record
+package io.keyss.view_record.utils
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -21,6 +21,9 @@ object RecordViewUtil {
     private const val TAG = "RecordViewUtil"
     private val mMainHandler = Handler(Looper.getMainLooper())
 
+    /**
+     * @param width 指定宽度，等比例缩放高度
+     */
     @Throws
     fun getBitmapFromView(window: Window, targetView: View, width: Int? = null): Bitmap {
         val finalWidth = width ?: targetView.width
