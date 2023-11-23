@@ -53,7 +53,17 @@ class ViewRecorder {
     //private var audioEncoder: AudioEncoder? = null
     private lateinit var recordController: AndroidMuxerRecordController
 
-    fun init(window: Window, view: View, width: Int, fps: Int, bitRate: Int, iFrameInterval: Int) {
+    fun init(
+        window: Window,
+        view: View,
+        width: Int,
+        fps: Int = 24,
+        videoBitRate: Int = 1_800_000,
+        iFrameInterval: Int = 1,
+        audioBitRate:Int = 192_000,
+        audioSampleRate:Int = 44_100,
+        isStereo: Boolean = true,
+    ) {
         if (isStartRecord) {
             throw IllegalStateException("recording is running")
         }
@@ -84,7 +94,7 @@ class ViewRecorder {
             frameBitmap.width,
             frameBitmap.height,
             fps,
-            bitRate,
+            videoBitRate,
             iFrameInterval,
             //FormatVideoEncoder.YUV420SEMIPLANAR
             FormatVideoEncoder.YUV420Dynamical
@@ -109,13 +119,13 @@ class ViewRecorder {
         })
         audioInitialized = microphoneManager.createMicrophone(
             MediaRecorder.AudioSource.DEFAULT,
-            44100,
-            true,
+            audioSampleRate,
+            isStereo,
             false,
             false
         )
         audioInitialized = audioInitialized && audioEncoder.prepareAudioEncoder(
-            192_000,
+            audioBitRate,
             microphoneManager.sampleRate,
             microphoneManager.channel == AudioFormat.CHANNEL_IN_STEREO,
             microphoneManager.inputBufferSize

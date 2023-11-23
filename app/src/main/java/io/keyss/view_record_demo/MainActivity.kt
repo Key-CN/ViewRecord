@@ -119,12 +119,10 @@ class MainActivity : AppCompatActivity() {
                 kotlinx.coroutines.delay(1000)
             }
         }
-        mStartTime = System.currentTimeMillis()
         //method1(view)
         //method2(view)
         //method3(view)
         method4(view)
-
         //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
         //mRecordEncoder.start()
     }
@@ -135,10 +133,24 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "正在录制中", Toast.LENGTH_SHORT).show()
             return
         }
-        viewRecord.init(window, view, 540, 24, 1800_000, 1)
+        viewRecord.init(
+            window = window,
+            view = view,
+            width = 540,
+            fps = 24,
+            videoBitRate = 1800_000,
+            iFrameInterval = 1,
+            audioBitRate = 192_000,
+            audioSampleRate = 44100,
+            isStereo = true,
+        )
         val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
         mLastRecordFile = outputFile
-        Log.i(TAG, "startRecord() outputFile: ${outputFile.absolutePath}")
+        // 先check一下，最后对比下参数
+        val width = view.width
+        val height = view.height
+        Log.i(TAG, "startRecord(): View: width=$width, height=$height, outputFile: ${outputFile.absolutePath}")
+        mStartTime = System.currentTimeMillis()
         viewRecord.startRecord(outputFile.absolutePath, object : RecordController.Listener {
             override fun onStatusChange(status: RecordController.Status?) {
                 Log.i(TAG, "onStatusChange() called with: status = $status")
