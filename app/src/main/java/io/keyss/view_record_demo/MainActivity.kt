@@ -20,7 +20,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.ListenableFuture
 import io.keyss.view_record.ISourceProvider
-import io.keyss.view_record.RecordAsyncEncoder
+import io.keyss.view_record.RecordEncoder
 import io.keyss.view_record.recording.RecordController
 import io.keyss.view_record.recording.ViewRecorder
 import io.keyss.view_record.utils.RecordViewUtil
@@ -44,7 +44,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
     private var mTimerJob: Job? = null
-    private val mRecordEncoder = RecordAsyncEncoder()
+
+    //private val mRecordEncoder = RecordAsyncEncoder()
+    private val mRecordEncoder = RecordEncoder()
     private var mLastRecordFile: File? = null
 
     // 需要的权限列表
@@ -103,6 +105,8 @@ class MainActivity : AppCompatActivity() {
         }))*/
     }
 
+
+    private var mStartTime = 0L
     private fun startRecord(view: View) {
         if (isLackPermissions()) {
             checkPermission()
@@ -115,6 +119,7 @@ class MainActivity : AppCompatActivity() {
                 kotlinx.coroutines.delay(1000)
             }
         }
+        mStartTime = System.currentTimeMillis()
         //method1(view)
         //method2(view)
         //method3(view)
@@ -172,7 +177,7 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "startRecord() outputFile: ${outputFile.absolutePath}")
         val sourceProvider = object : ISourceProvider {
             override fun next(): Bitmap {
-                return RecordViewUtil.getBitmapFromView(window, view, 800)
+                return RecordViewUtil.getBitmapFromView(window, view, 540)
             }
 
             override fun onResult(isSuccessful: Boolean, result: String) {
@@ -183,11 +188,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopRecord() {
+        // 录制时长
+        val duration = System.currentTimeMillis() - mStartTime
+        // 输出转换成秒毫秒
+        val durationStr = "${duration / 1000}.${duration % 1000}"
         //mRecordEncoder.stop()
         stopMethod4()
         mTimerJob?.cancel()
         mTimerJob = null
-        Log.i(TAG, "stopRecord() mLastRecordFile: ${mLastRecordFile?.absolutePath}")
+        Log.i(TAG, "stopRecord() duration=${durationStr}秒, RecordFile: ${mLastRecordFile?.absolutePath}")
     }
 
     private fun checkPermission() {

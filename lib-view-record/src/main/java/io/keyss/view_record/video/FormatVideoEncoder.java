@@ -18,6 +18,8 @@ package io.keyss.view_record.video;
 
 import android.media.MediaCodecInfo;
 
+import androidx.annotation.NonNull;
+
 /**
  * Created by pedro on 21/01/17.
  */
@@ -47,5 +49,11 @@ public enum FormatVideoEncoder {
             case SURFACE -> MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface;
             default -> -1;
         };
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return name() + "int code: " + getFormatCodec();
     }
 }

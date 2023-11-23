@@ -36,15 +36,13 @@ import io.keyss.view_record.utils.CodecUtil;
  * Encode PCM audio data to ACC and return in a callback
  */
 
-public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
+public class AudioEncoder extends BaseEncoder {
 
     private final GetAacData getAacData;
     private int bitRate = 192 * 1024;  //in kbps
     private int sampleRate = 44100; //in hz
     private int maxInputSize = 0;
     private boolean isStereo = true;
-    private long bytesRead = 0;
-    private boolean tsModeBuffer = false;
 
     public AudioEncoder(GetAacData getAacData) {
         this.getAacData = getAacData;
@@ -59,7 +57,6 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
         this.sampleRate = sampleRate;
         this.maxInputSize = maxInputSize;
         this.isStereo = isStereo;
-        isBufferMode = true;
         try {
             MediaCodecInfo encoder = chooseEncoder(CodecUtil.AAC_MIME);
             if (encoder != null) {
@@ -103,7 +100,6 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
 
     @Override
     protected void stopImp() {
-        bytesRead = 0;
         Log.i(TAG, "stopped");
     }
 
@@ -121,26 +117,17 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
 
     @Override
     protected long calculatePts(Frame frame, long presentTimeUs) {
-        long pts;
-        if (tsModeBuffer) {
-            int channels = isStereo ? 2 : 1;
-            pts = 1000000 * bytesRead / 2 / channels / sampleRate;
-            bytesRead += frame.getSize();
-        } else {
-            pts = Math.max(0, frame.getTimeStamp() - presentTimeUs);
-        }
-        return pts;
+        return Math.max(0, frame.getTimeStamp() - presentTimeUs);
+//        return frame.getTimeStamp();
     }
 
     @Override
-    protected void checkBuffer(@NonNull ByteBuffer byteBuffer,
-                               @NonNull MediaCodec.BufferInfo bufferInfo) {
+    protected void checkBuffer(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         fixTimeStamp(bufferInfo);
     }
 
     @Override
-    protected void sendBuffer(@NonNull ByteBuffer byteBuffer,
-                              @NonNull MediaCodec.BufferInfo bufferInfo) {
+    protected void sendBuffer(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         getAacData.getAacData(byteBuffer, bufferInfo);
     }
 
@@ -149,7 +136,6 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
      * Use it after prepareAudioEncoder(int sampleRate, int channel).
      * Used too with microphone.
      */
-    @Override
     public void inputPCMData(@NonNull Frame frame) {
         if (running && !queue.offer(frame)) {
             Log.i(TAG, "frame discarded");
@@ -175,16 +161,6 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
 
     public void setSampleRate(int sampleRate) {
         this.sampleRate = sampleRate;
-    }
-
-    public boolean isTsModeBuffer() {
-        return tsModeBuffer;
-    }
-
-    public void setTsModeBuffer(boolean tsModeBuffer) {
-        if (!isRunning()) {
-            this.tsModeBuffer = tsModeBuffer;
-        }
     }
 
     @Override

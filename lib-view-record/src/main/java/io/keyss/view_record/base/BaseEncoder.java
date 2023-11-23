@@ -50,7 +50,6 @@ public abstract class BaseEncoder implements EncoderCallback {
     protected MediaCodec codec;
     protected static long presentTimeUs;
     protected volatile boolean running = false;
-    protected boolean isBufferMode = true;
     protected CodecUtil.Force force = CodecUtil.Force.FIRST_COMPATIBLE_FOUND;
     private MediaCodec.Callback callback;
     private long oldTimeStamp = 0L;
@@ -66,6 +65,10 @@ public abstract class BaseEncoder implements EncoderCallback {
     public void setFrameDataGetter(IFrameDataGetter iFrameDataGetter) {
         isRealTime = true;
         this.iFrameDataGetter = iFrameDataGetter;
+    }
+
+    public void setRealTime(boolean realTime) {
+        isRealTime = realTime;
     }
 
     public void restart() {
@@ -167,26 +170,6 @@ public abstract class BaseEncoder implements EncoderCallback {
 
     protected abstract MediaCodecInfo chooseEncoder(String mime);
 
-    protected void getDataFromEncoder() throws IllegalStateException {
-        if (isBufferMode) {
-            int inBufferIndex = codec.dequeueInputBuffer(0);
-            if (inBufferIndex >= 0) {
-                inputAvailable(codec, inBufferIndex);
-            }
-        }
-        while (running) {
-            int outBufferIndex = codec.dequeueOutputBuffer(bufferInfo, 0);
-            if (outBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                MediaFormat mediaFormat = codec.getOutputFormat();
-                formatChanged(codec, mediaFormat);
-            } else if (outBufferIndex >= 0) {
-                outputAvailable(codec, outBufferIndex, bufferInfo);
-            } else {
-                break;
-            }
-        }
-    }
-
     protected abstract Frame getInputFrame() throws InterruptedException;
 
     protected abstract long calculatePts(Frame frame, long presentTimeUs);
@@ -222,11 +205,9 @@ public abstract class BaseEncoder implements EncoderCallback {
         }
     }
 
-    protected abstract void checkBuffer(@NonNull ByteBuffer byteBuffer,
-                                        @NonNull MediaCodec.BufferInfo bufferInfo);
+    protected abstract void checkBuffer(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo);
 
-    protected abstract void sendBuffer(@NonNull ByteBuffer byteBuffer,
-                                       @NonNull MediaCodec.BufferInfo bufferInfo);
+    protected abstract void sendBuffer(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo);
 
     private void processOutput(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec mediaCodec,
                                int outBufferIndex, @NonNull MediaCodec.BufferInfo bufferInfo) throws IllegalStateException {

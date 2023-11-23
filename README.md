@@ -1,12 +1,13 @@
 # Android 应用内录屏
 
-### Description
+## Description
 Android View Record: Screen Record, Video Record, Audio Record
 安卓录屏，或者说app内录屏，避开隐私问题，不会录到系统通知或者其他系统级弹窗或者各种类似下拉状态栏等会遮盖的之类的画面，当初也是为了实现这个需求造的这个轮子（苦于搜遍GitHub都没搜到，不然也懒得写了），View级别的录屏，你可以录整个RootContentView，也可以是只录某个ViewGroup或者View，支持同时录音
 
 > 注释保留了很多，因为本身也是边学习边输出，出于交流分享共同学习的目的，保留了注释，方便大家理解和避开一些坑
 
-### Nov 23 2023 新增一个录制类 ViewRecorder
+
+## Nov 23 2023 新增一个录制类 ViewRecorder
 **高可用，比我之前写的那个兼容性要好，暂时项目中先用这个**
 不过因为也是临时用，又紧急，所以一些可配置下项我暂时还没抽出来，只根据自己项目需要写死了值
 
@@ -24,7 +25,7 @@ https://github.com/chromium/chromium/blob/0ddb38eda131f19995ec537bc67b62d35170e2
 chromium中对硬编部分，做了CPU判断，从我的代码上线至今收集到的日志，应该是有点关系的。后续我也会跟进完善
 
 
-### Usage
+## Usage
 具体可以参照Demo，MainActivity中的调用
 1. 实现```ISourceProvider```接口
 2. 指定输出路径
@@ -66,13 +67,13 @@ VRLogger.logLevel = Log.VERBOSE 或者 Log.DEBUG 级别
 ```
 
 
-### 优点：
+## 优点：
 1. 不需要权限，主要说得是录屏的那个敏感权限弹窗。如果需要录音，那录音权限还是需要的。
 2. 解决隐私问题，常规录屏方案可能会录到用户的隐私信息，比如聊天记录、各类账号、短信验证码等。
 3. 不会因为下拉状态栏等，需要录制的内容被遮盖。
 4. 自定义源更灵活。
 
-### 缺点：
+## 缺点：
 1. 只能录制应用内的前台内容（录后台内容其实可以实现，自己控制下next的输入源就可以了，理论上扩展性很高）。
 2. 不能录制SurfaceView的内容，原理问题，如果需要录摄像头或者Player需要使用TextureView。
 

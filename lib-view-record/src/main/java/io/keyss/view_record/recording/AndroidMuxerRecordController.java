@@ -85,8 +85,8 @@ public class AndroidMuxerRecordController extends BaseRecordController {
                 videoTrack = mediaMuxer.addTrack(videoFormat);
                 init();
             }
-        } else if (status == Status.RESUMED && (videoInfo.flags == MediaCodec.BUFFER_FLAG_KEY_FRAME
-                || isKeyFrame(videoBuffer))) {
+        } else if (status == Status.RESUMED
+                && (videoInfo.flags == MediaCodec.BUFFER_FLAG_KEY_FRAME || isKeyFrame(videoBuffer))) {
             status = Status.RECORDING;
             if (listener != null) listener.onStatusChange(status);
         }

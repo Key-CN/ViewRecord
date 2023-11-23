@@ -80,7 +80,6 @@ public class VideoEncoder extends BaseEncoder {
         this.formatVideoEncoder = formatVideoEncoder;
         this.avcProfile = avcProfile;
         this.avcProfileLevel = avcProfileLevel;
-        isBufferMode = true;
         MediaCodecInfo encoder = chooseEncoder(type);
         try {
             if (encoder != null) {
@@ -127,7 +126,6 @@ public class VideoEncoder extends BaseEncoder {
             codec.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             running = false;
             if (formatVideoEncoder == FormatVideoEncoder.SURFACE) {
-                isBufferMode = false;
                 inputSurface = codec.createInputSurface();
             }
             Log.i(TAG, "prepared");
@@ -277,7 +275,7 @@ public class VideoEncoder extends BaseEncoder {
     @Override
     protected Frame getInputFrame() throws InterruptedException {
         // 这里耗时了
-        Frame frame = isRealTime ? iFrameDataGetter.getFrameData() : queue.take();
+        Frame frame = isRealTime && null != iFrameDataGetter ? iFrameDataGetter.getFrameData() : queue.take();
         // 所以这里可能会刚好已经停止了
         if (frame == null) return null;
         // todo 要改，这个fpsLimiter有问题
@@ -293,6 +291,7 @@ public class VideoEncoder extends BaseEncoder {
     @Override
     protected long calculatePts(Frame frame, long presentTimeUs) {
         return Math.max(0, frame.getTimeStamp() - presentTimeUs);
+//        return frame.getTimeStamp();
     }
 
     @Override
@@ -301,17 +300,16 @@ public class VideoEncoder extends BaseEncoder {
     }
 
     @Override
-    protected void checkBuffer(@NonNull ByteBuffer byteBuffer,
-                               @NonNull MediaCodec.BufferInfo bufferInfo) {
+    protected void checkBuffer(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         fixTimeStamp(bufferInfo);
         if (formatVideoEncoder == FormatVideoEncoder.SURFACE) {
+            // 感觉surface的方式可以理解为和实时的模式是一样的
             bufferInfo.presentationTimeUs = System.nanoTime() / 1000 - presentTimeUs;
         }
     }
 
     @Override
-    protected void sendBuffer(@NonNull ByteBuffer byteBuffer,
-                              @NonNull MediaCodec.BufferInfo bufferInfo) {
+    protected void sendBuffer(@NonNull ByteBuffer byteBuffer, @NonNull MediaCodec.BufferInfo bufferInfo) {
         getVideoData.getVideoData(byteBuffer, bufferInfo);
     }
 }

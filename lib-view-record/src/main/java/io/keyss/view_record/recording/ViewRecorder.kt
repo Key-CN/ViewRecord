@@ -1,7 +1,9 @@
 package io.keyss.view_record.recording
 
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaFormat
+import android.media.MediaRecorder
 import android.util.Log
 import android.view.View
 import android.view.Window
@@ -98,13 +100,26 @@ class ViewRecorder {
                 recordController.setAudioFormat(mediaFormat)
             }
         })
+        audioEncoder.setRealTime(true)
+        //audioEncoder.setForce(CodecUtil.Force.SOFTWARE)
         microphoneManager = MicrophoneManager(object : GetMicrophoneData {
             override fun inputPCMData(frame: Frame) {
                 audioEncoder.inputPCMData(frame)
             }
         })
-        audioInitialized = microphoneManager.createMicrophone()
-        audioInitialized = audioInitialized && audioEncoder.prepareAudioEncoder()
+        audioInitialized = microphoneManager.createMicrophone(
+            MediaRecorder.AudioSource.DEFAULT,
+            44100,
+            true,
+            false,
+            false
+        )
+        audioInitialized = audioInitialized && audioEncoder.prepareAudioEncoder(
+            192_000,
+            microphoneManager.sampleRate,
+            microphoneManager.channel == AudioFormat.CHANNEL_IN_STEREO,
+            microphoneManager.inputBufferSize
+        )
         if (audioInitialized) {
             audioEncoder.start()
             microphoneManager.start()

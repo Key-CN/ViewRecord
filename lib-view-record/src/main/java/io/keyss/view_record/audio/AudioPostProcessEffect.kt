@@ -22,6 +22,7 @@ import android.util.Log
 
 /**
  * Created by pedro on 11/05/17.
+ * 音频二次加工的类
  */
 class AudioPostProcessEffect(private val microphoneId: Int) {
     private val TAG = "AudioPostProcessEffect"
