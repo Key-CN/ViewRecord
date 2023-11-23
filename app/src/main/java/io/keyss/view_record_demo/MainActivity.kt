@@ -1,9 +1,11 @@
 package io.keyss.view_record_demo
 
 import android.graphics.Bitmap
+import android.media.MediaCodec
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -23,6 +25,7 @@ import io.keyss.view_record.recording.RecordController
 import io.keyss.view_record.recording.ViewRecorder
 import io.keyss.view_record.utils.RecordViewUtil
 import io.keyss.view_record.utils.VRLogger
+import io.keyss.view_record.video.EncoderErrorCallback
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -123,13 +126,21 @@ class MainActivity : AppCompatActivity() {
 
     val viewRecord = ViewRecorder()
     private fun method4(view: View) {
-        viewRecord.init(window, view, 540)
+        if (viewRecord.isStartRecord) {
+            Toast.makeText(this, "正在录制中", Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewRecord.init(window, view, 540, 24, 1800_000, 1)
         val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
         mLastRecordFile = outputFile
         Log.i(TAG, "startRecord() outputFile: ${outputFile.absolutePath}")
         viewRecord.startRecord(outputFile.absolutePath, object : RecordController.Listener {
             override fun onStatusChange(status: RecordController.Status?) {
                 Log.i(TAG, "onStatusChange() called with: status = $status")
+            }
+        }, object : EncoderErrorCallback {
+            override fun onCodecError(type: String, e: MediaCodec.CodecException) {
+                Log.e(TAG, "onCodecError() called with: type = $type", e)
             }
         })
     }

@@ -39,7 +39,7 @@ import io.keyss.view_record.utils.CodecUtil;
 public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
 
     private final GetAacData getAacData;
-    private int bitRate = 128 * 1024;  //in kbps
+    private int bitRate = 192 * 1024;  //in kbps
     private int sampleRate = 44100; //in hz
     private int maxInputSize = 0;
     private boolean isStereo = true;
@@ -54,8 +54,7 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
     /**
      * Prepare encoder with custom parameters
      */
-    public boolean prepareAudioEncoder(int bitRate, int sampleRate, boolean isStereo,
-                                       int maxInputSize) {
+    public boolean prepareAudioEncoder(int bitRate, int sampleRate, boolean isStereo, int maxInputSize) {
         this.bitRate = bitRate;
         this.sampleRate = sampleRate;
         this.maxInputSize = maxInputSize;
@@ -72,12 +71,10 @@ public class AudioEncoder extends BaseEncoder implements GetMicrophoneData {
             }
 
             int channelCount = (isStereo) ? 2 : 1;
-            MediaFormat audioFormat =
-                    MediaFormat.createAudioFormat(CodecUtil.AAC_MIME, sampleRate, channelCount);
+            MediaFormat audioFormat = MediaFormat.createAudioFormat(CodecUtil.AAC_MIME, sampleRate, channelCount);
             audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
             audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, maxInputSize);
-            audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE,
-                    MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+            audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
             setCallback();
             codec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             running = false;

@@ -19,7 +19,6 @@ package io.keyss.view_record.base;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -88,26 +87,12 @@ public abstract class BaseEncoder implements EncoderCallback {
         handlerThread = new HandlerThread(TAG);
         handlerThread.start();
         handler = new Handler(handlerThread.getLooper());
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            createAsyncCallback();
-            codec.setCallback(callback, handler);
-        }
+        createAsyncCallback();
+        codec.setCallback(callback, handler);
     }
 
     private void initCodec() {
         codec.start();
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            handler.post(() -> {
-                while (running) {
-                    try {
-                        getDataFromEncoder();
-                    } catch (IllegalStateException e) {
-                        Log.i(TAG, "Encoding error", e);
-                        reloadCodec(e);
-                    }
-                }
-            });
-        }
         running = true;
     }
 
@@ -266,12 +251,7 @@ public abstract class BaseEncoder implements EncoderCallback {
             Log.d(TAG, "inputAvailable: not running");
             return;
         }
-        ByteBuffer byteBuffer;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            byteBuffer = mediaCodec.getInputBuffer(inBufferIndex);
-        } else {
-            byteBuffer = mediaCodec.getInputBuffers()[inBufferIndex];
-        }
+        ByteBuffer byteBuffer = mediaCodec.getInputBuffer(inBufferIndex);
         processInput(byteBuffer, mediaCodec, inBufferIndex);
     }
 

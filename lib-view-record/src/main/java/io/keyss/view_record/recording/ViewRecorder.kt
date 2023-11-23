@@ -13,6 +13,7 @@ import io.keyss.view_record.base.Frame
 import io.keyss.view_record.recording.RecordController.Listener
 import io.keyss.view_record.utils.EncoderTools
 import io.keyss.view_record.utils.RecordViewUtil
+import io.keyss.view_record.video.EncoderErrorCallback
 import io.keyss.view_record.video.FormatVideoEncoder
 import io.keyss.view_record.video.GetVideoData
 import io.keyss.view_record.video.IFrameDataGetter
@@ -33,6 +34,12 @@ class ViewRecorder {
     private lateinit var view: View
     private lateinit var window: Window
 
+    /**
+     * 是否已启动
+     */
+    @Volatile
+    var isStartRecord = false
+        private set
     private var audioInitialized = false
 
     private lateinit var videoEncoder: VideoEncoder
@@ -44,16 +51,14 @@ class ViewRecorder {
     //private var audioEncoder: AudioEncoder? = null
     private lateinit var recordController: AndroidMuxerRecordController
 
-    fun init(window: Window, view: View, width: Int) {
+    fun init(window: Window, view: View, width: Int, fps: Int, bitRate: Int, iFrameInterval: Int) {
+        if (isStartRecord) {
+            throw IllegalStateException("recording is running")
+        }
         this.window = window
         this.view = view
         recordController = AndroidMuxerRecordController()
         videoEncoder = VideoEncoder(object : GetVideoData {
-            override fun onSpsPpsVps(sps: ByteBuffer, pps: ByteBuffer, vps: ByteBuffer?) {
-                // 用不着，他是给流设置信息用的，todo 调通后删除
-                Log.d(TAG, "onSpsPpsVps() called with: sps = $sps, pps = $pps, vps = $vps")
-            }
-
             override fun getVideoData(h264Buffer: ByteBuffer, info: MediaCodec.BufferInfo) {
                 //Log.d(TAG, "getVideoData() called with: h264Buffer = $h264Buffer, info = $info")
                 //fpsListener.calculateFps()
@@ -71,15 +76,18 @@ class ViewRecorder {
                 return Frame(getFrameBytes())
             }
         })
+        // 通过获取一帧来初始化视频参数
         val frameBitmap = getFrameBitmap(width)
         videoEncoder.prepareVideoEncoder(
             frameBitmap.width,
             frameBitmap.height,
-            24,
-            1280_000,
-            1,
-            FormatVideoEncoder.YUV420SEMIPLANAR
+            fps,
+            bitRate,
+            iFrameInterval,
+            //FormatVideoEncoder.YUV420SEMIPLANAR
+            FormatVideoEncoder.YUV420Dynamical
         )
+
         // 音频设置
         audioEncoder = AudioEncoder(object : GetAacData {
             override fun getAacData(aacBuffer: ByteBuffer, info: MediaCodec.BufferInfo) {
@@ -104,19 +112,28 @@ class ViewRecorder {
     }
 
 
-    fun startRecord(path: String, listener: Listener) {
-        recordController.startRecord(path, listener)
+    fun startRecord(path: String, statusListener: Listener, errorListener: EncoderErrorCallback) {
+        if (isStartRecord) {
+            return
+        }
+        isStartRecord = true
+        // 设置错误回调
+        videoEncoder.setEncoderErrorCallback(errorListener)
+        // 启动并设置正确的回调
+        recordController.startRecord(path, statusListener)
         videoEncoder.start()
     }
 
     fun stopRecord() {
+        if (!isStartRecord) {
+            return
+        }
+        isStartRecord = false
         recordController.stopRecord()
         if (!recordController.isRecording) {
-            if (audioInitialized) {
-                microphoneManager.stop()
-            }
             videoEncoder.stop()
             if (audioInitialized) {
+                microphoneManager.stop()
                 audioEncoder.stop()
             }
             recordController.resetFormats()
@@ -127,18 +144,17 @@ class ViewRecorder {
         if (!this::view.isInitialized || !this::window.isInitialized) {
             throw IllegalStateException("view or window is not initialized")
         }
-        val start = System.currentTimeMillis()
+        //val start = System.currentTimeMillis()
         val bitmap = getFrameBitmap(videoEncoder.width)
-        val getBitmapCost = System.currentTimeMillis() - start
+        //val getBitmapCost = System.currentTimeMillis() - start
         val inputData: ByteArray = EncoderTools.getPixels(
             videoEncoder.formatVideoEncoder.formatCodec,
             bitmap.width,
             bitmap.height,
             bitmap
         )
-        /*if (BuildConfig.DEBUG) {
-            VRLogger.v("getFrameBytes() getBitmapCost: ${getBitmapCost}ms, total cost: ${System.currentTimeMillis() - start}ms")
-        }*/
+        // 21 = COLOR_FormatYUV420SemiPlanar
+        //VRLogger.v("getFrameBytes() colorFormat: ${videoEncoder.formatVideoEncoder.formatCodec}, getBitmapCost: ${getBitmapCost}ms, total cost: ${System.currentTimeMillis() - start}ms")
         return inputData
     }
 

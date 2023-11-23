@@ -25,7 +25,7 @@ interface EncoderErrorCallback {
     fun onCodecError(type: String, e: MediaCodec.CodecException)
 
     /**
-     * @return indicate if should try reset encoder
+     * @return indicate if should try reset encoder, 编码过程中 input 和 output 报的错
      */
     fun onEncodeError(type: String, e: IllegalStateException): Boolean = true
 }
