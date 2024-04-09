@@ -20,12 +20,14 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 
 import io.keyss.view_record.base.BaseEncoder;
@@ -93,15 +95,15 @@ public class VideoEncoder extends BaseEncoder {
                         return false;
                     }
                 }
+                Log.i(TAG, "YUV420 dynamical choose " + this.formatVideoEncoder.toString());
             } else {
                 Log.e(TAG, "Valid encoder not found");
                 return false;
             }
             MediaFormat videoFormat = MediaFormat.createVideoFormat(type, width, height);
             String resolution = width + "x" + height;
-            Log.i(TAG, "Prepare video info: " + this.formatVideoEncoder.name() + ", " + resolution);
-            videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                    this.formatVideoEncoder.getFormatCodec());
+            Log.i(TAG, "Prepare video info: " + this.formatVideoEncoder.toString() + ", " + resolution);
+            videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, this.formatVideoEncoder.getFormatCodec());
             videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
             videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
             videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, fps);
@@ -109,8 +111,10 @@ public class VideoEncoder extends BaseEncoder {
             //Set CBR mode if supported by encoder.
             if (CodecUtil.isCBRModeSupported(encoder, type)) {
                 Log.i(TAG, "set bitrate mode CBR");
-                videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
-                        MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+                videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+            } else if (CodecUtil.isVBRModeSupported(encoder, type)) {
+                Log.i(TAG, "set bitrate mode VBR");
+                videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
             } else {
                 Log.i(TAG, "bitrate mode CBR not supported using default mode");
             }
@@ -164,12 +168,24 @@ public class VideoEncoder extends BaseEncoder {
         restart();
     }
 
+    /**
+     * mediaCodecList: [2135033992, 19, 21, 20, 39, 2130708361(COLOR_FormatSurface)]
+     * 一般2135033992都是支持的，但我目前没有找到合适的转换方法
+     * 21对应的是{@link android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar}
+     * 2135033992对应的是{@link android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible}
+     */
     private FormatVideoEncoder chooseColorDynamically(MediaCodecInfo mediaCodecInfo) {
-        for (int color : mediaCodecInfo.getCapabilitiesForType(type).colorFormats) {
-            if (color == FormatVideoEncoder.YUV420PLANAR.getFormatCodec()) {
-                return FormatVideoEncoder.YUV420PLANAR;
-            } else if (color == FormatVideoEncoder.YUV420SEMIPLANAR.getFormatCodec()) {
-                return FormatVideoEncoder.YUV420SEMIPLANAR;
+        int[] colorFormats = mediaCodecInfo.getCapabilitiesForType(type).colorFormats;
+        Log.i(TAG, "Color supported by this encoder: " + Arrays.toString(colorFormats));
+        for (int color : colorFormats) {
+            if (color == FormatVideoEncoder.YUV420_PLANAR.getFormatCodec()) {
+                return FormatVideoEncoder.YUV420_PLANAR;
+            } else if (color == FormatVideoEncoder.YUV420_SEMI_PLANAR.getFormatCodec()) {
+                return FormatVideoEncoder.YUV420_SEMI_PLANAR;
+            } else if (color == FormatVideoEncoder.YUV420_PACKED_PLANAR.getFormatCodec()) {
+                return FormatVideoEncoder.YUV420_PACKED_PLANAR;
+            } else if (color == FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR.getFormatCodec()) {
+                return FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR;
             }
         }
         return null;
@@ -252,19 +268,22 @@ public class VideoEncoder extends BaseEncoder {
         }
 
         Log.i(TAG, mediaCodecInfoList.size() + " encoders found");
-        for (MediaCodecInfo mci : mediaCodecInfoList) {
-            Log.i(TAG, "Encoder " + mci.getName());
-            MediaCodecInfo.CodecCapabilities codecCapabilities = mci.getCapabilitiesForType(mime);
+        for (MediaCodecInfo mediaCodecInfo : mediaCodecInfoList) {
+            Log.i(TAG, "Encoder: " + mediaCodecInfo.getName());
+            MediaCodecInfo.CodecCapabilities codecCapabilities = mediaCodecInfo.getCapabilitiesForType(mime);
             // 获取支持的颜色格式
             for (int color : codecCapabilities.colorFormats) {
                 Log.i(TAG, "Color supported: " + color);
                 if (formatVideoEncoder == FormatVideoEncoder.SURFACE) {
-                    if (color == FormatVideoEncoder.SURFACE.getFormatCodec()) return mci;
+                    if (color == FormatVideoEncoder.SURFACE.getFormatCodec()) return mediaCodecInfo;
                 } else {
-                    //check if encoder support any yuv420 color
-                    if (color == FormatVideoEncoder.YUV420PLANAR.getFormatCodec()
-                            || color == FormatVideoEncoder.YUV420SEMIPLANAR.getFormatCodec()) {
-                        return mci;
+                    // check if encoder support any yuv420 color
+                    if (color == FormatVideoEncoder.YUV420_PLANAR.getFormatCodec()
+                            || color == FormatVideoEncoder.YUV420_SEMI_PLANAR.getFormatCodec()
+                            || color == FormatVideoEncoder.YUV420_PACKED_PLANAR.getFormatCodec()
+                            || color == FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR.getFormatCodec()
+                    ) {
+                        return mediaCodecInfo;
                     }
                 }
             }
@@ -275,16 +294,20 @@ public class VideoEncoder extends BaseEncoder {
     @Override
     protected Frame getInputFrame() throws InterruptedException {
         // 这里耗时了
+        long start = System.currentTimeMillis();
         Frame frame = isRealTime && null != iFrameDataGetter ? iFrameDataGetter.getFrameData() : queue.take();
+        long sinceGetFrame = System.currentTimeMillis() - start;
+        //VRLogger.v("frame=" + frame);
         // 所以这里可能会刚好已经停止了
         if (frame == null) return null;
-        // todo 要改，这个fpsLimiter有问题
-        if (fpsLimiter.limitFPS() && running) {
-            //long sleepTime = fpsLimiter.getSleepTime();
-            //SystemClock.sleep(sleepTime);
-            //VRLogger.v("frame limit discarded, sleepTime=" + sleepTime + "ms");
+        // 跟当前帧理应的时间差，再减去一个处理时间
+        long diffTime = fpsLimiter.limitFPS() - sinceGetFrame;
+        if (diffTime > 0 && running) {
+            SystemClock.sleep(diffTime);
+            //VRLogger.v("frame limit discarded, sleepTime=" + diffTime + "ms");
             return getInputFrame();
         }
+        fpsLimiter.setCurrentFrameTime();
         return frame;
     }
 

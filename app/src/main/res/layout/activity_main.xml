@@ -26,6 +26,23 @@
         app:layout_constraintStart_toStartOf="@id/btn_start_record_main_activity"
         app:layout_constraintTop_toBottomOf="@id/btn_start_record_main_activity" />
 
+    <androidx.constraintlayout.utils.widget.MotionButton
+        android:id="@+id/btn_capture_record_main_activity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="取当前帧"
+        app:layout_constraintStart_toStartOf="@id/btn_stop_record_main_activity"
+        app:layout_constraintTop_toBottomOf="@id/btn_stop_record_main_activity" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/iv_capture_main_activity"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:src="#123456"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layout_record_content_main_activity"
         android:layout_width="match_parent"

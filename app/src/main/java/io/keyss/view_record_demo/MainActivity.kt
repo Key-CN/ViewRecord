@@ -10,6 +10,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -38,7 +39,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvTime: androidx.appcompat.widget.AppCompatTextView
     private lateinit var btnStart: com.google.android.material.button.MaterialButton
     private lateinit var btnStop: androidx.constraintlayout.utils.widget.MotionButton
-
+    private lateinit var btnCapture: androidx.constraintlayout.utils.widget.MotionButton
+    private lateinit var ivCapture: AppCompatImageView
 
     private var mCamera: Camera? = null
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
@@ -47,6 +49,9 @@ class MainActivity : AppCompatActivity() {
 
     //private val mRecordEncoder = RecordAsyncEncoder()
     private val mRecordEncoder = RecordEncoder()
+
+    private val viewRecord = ViewRecorder()
+
     private var mLastRecordFile: File? = null
 
     // 需要的权限列表
@@ -69,6 +74,15 @@ class MainActivity : AppCompatActivity() {
         btnStop = findViewById(R.id.btn_stop_record_main_activity)
         btnStop.setOnClickListener {
             stopRecord()
+        }
+        ivCapture = findViewById(R.id.iv_capture_main_activity)
+        btnCapture = findViewById(R.id.btn_capture_record_main_activity)
+        btnCapture.setOnClickListener {
+            val startTime = System.currentTimeMillis()
+            val frameBitmap = RecordViewUtil.getBitmapFromView(window, layoutRecordContentView, 540)
+            //val frameBitmap = viewRecord.getFrameBitmap(640)
+            Log.i(TAG, "OnClick getFrameBitmap cost: ${System.currentTimeMillis() - startTime}ms")
+            ivCapture.setImageBitmap(frameBitmap)
         }
         initFunc()
         VRLogger.logLevel = Log.VERBOSE
@@ -127,7 +141,6 @@ class MainActivity : AppCompatActivity() {
         //mRecordEncoder.start()
     }
 
-    val viewRecord = ViewRecorder()
     private fun method4(view: View) {
         if (viewRecord.isStartRecord) {
             Toast.makeText(this, "正在录制中", Toast.LENGTH_SHORT).show()
@@ -136,14 +149,22 @@ class MainActivity : AppCompatActivity() {
         viewRecord.init(
             window = window,
             view = view,
-            width = 540,
-            fps = 24,
-            videoBitRate = 1800_000,
+            width = 555,
+            fps = 30,
+            videoBitRate = 4_000_000,
             iFrameInterval = 1,
             audioBitRate = 192_000,
             audioSampleRate = 44100,
             isStereo = true,
         )
+        /*viewRecord.initJustVideo(
+            window = window,
+            view = view,
+            width = 222,
+            fps = 30,
+            videoBitRate = 4_000_000,
+            iFrameInterval = 1,
+        )*/
         val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
         mLastRecordFile = outputFile
         // 先check一下，最后对比下参数

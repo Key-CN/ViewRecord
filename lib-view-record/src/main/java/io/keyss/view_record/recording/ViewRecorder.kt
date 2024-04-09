@@ -42,10 +42,11 @@ class ViewRecorder {
     @Volatile
     var isStartRecord = false
         private set
-    private var audioInitialized = false
 
+    /** 视频编码器 */
     private lateinit var videoEncoder: VideoEncoder
 
+    private var audioInitialized = false
     private lateinit var audioEncoder: AudioEncoder
     private lateinit var microphoneManager: MicrophoneManager
 
@@ -53,16 +54,16 @@ class ViewRecorder {
     //private var audioEncoder: AudioEncoder? = null
     private lateinit var recordController: AndroidMuxerRecordController
 
-    fun init(
+    /**
+     * 只录视频
+     */
+    fun initJustVideo(
         window: Window,
         view: View,
         width: Int,
         fps: Int = 24,
-        videoBitRate: Int = 1_800_000,
+        videoBitRate: Int = 4_000_000,
         iFrameInterval: Int = 1,
-        audioBitRate:Int = 192_000,
-        audioSampleRate:Int = 44_100,
-        isStereo: Boolean = true,
     ) {
         if (isStartRecord) {
             throw IllegalStateException("recording is running")
@@ -96,9 +97,29 @@ class ViewRecorder {
             fps,
             videoBitRate,
             iFrameInterval,
-            //FormatVideoEncoder.YUV420SEMIPLANAR
             FormatVideoEncoder.YUV420Dynamical
+            //FormatVideoEncoder.YUV420_SEMI_PLANAR
+            // 用这个会anr？
+            //FormatVideoEncoder.YUV420FLEXIBLE
         )
+    }
+
+    /**
+     * 初始化录制：view视频+mic音频
+     */
+    fun init(
+        window: Window,
+        view: View,
+        width: Int,
+        fps: Int = 24,
+        videoBitRate: Int = 4_000_000,
+        iFrameInterval: Int = 1,
+        audioBitRate: Int = 192_000,
+        audioSampleRate: Int = 44_100,
+        isStereo: Boolean = true,
+    ) {
+        // 视频设置
+        initJustVideo(window, view, width, fps, videoBitRate, iFrameInterval)
 
         // 音频设置
         audioEncoder = AudioEncoder(object : GetAacData {
@@ -112,11 +133,13 @@ class ViewRecorder {
         })
         audioEncoder.setRealTime(true)
         //audioEncoder.setForce(CodecUtil.Force.SOFTWARE)
+
         microphoneManager = MicrophoneManager(object : GetMicrophoneData {
             override fun inputPCMData(frame: Frame) {
                 audioEncoder.inputPCMData(frame)
             }
         })
+
         audioInitialized = microphoneManager.createMicrophone(
             MediaRecorder.AudioSource.DEFAULT,
             audioSampleRate,
@@ -179,7 +202,7 @@ class ViewRecorder {
             bitmap
         )
         // 21 = COLOR_FormatYUV420SemiPlanar
-        //VRLogger.v("getFrameBytes() colorFormat: ${videoEncoder.formatVideoEncoder.formatCodec}, getBitmapCost: ${getBitmapCost}ms, total cost: ${System.currentTimeMillis() - start}ms")
+        //VRLogger.v("getFrameBytes() bitmap width=${videoEncoder.width}, colorFormat: ${videoEncoder.formatVideoEncoder.formatCodec}, getBitmapCost: ${getBitmapCost}ms, total cost: ${System.currentTimeMillis() - start}ms")
         return inputData
     }
 

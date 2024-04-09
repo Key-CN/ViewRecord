@@ -16,37 +16,31 @@
 
 package io.keyss.view_record.video;
 
+
 /**
- * Created by pedro on 11/10/18.
+ * 2024/04/04 修改
  */
-
 public class FpsLimiter {
-
-    private long startTS = System.currentTimeMillis();
-    private long ratioF = 1000 / 30;
-    private long ratio = 1000 / 30;
-    private long frameStartTS = 0;
+    private long lastFrameTime = System.currentTimeMillis();
+    private double ratioF = 1000.0 / 30;
 
     public void setFPS(int fps) {
-        startTS = System.currentTimeMillis();
-        ratioF = 1000 / fps;
-        ratio = 1000 / fps;
+        setCurrentFrameTime();
+        ratioF = 1000.0 / fps;
     }
 
-    public boolean limitFPS() {
-        long lastFrameTimestamp = System.currentTimeMillis() - startTS;
-        if (ratio < lastFrameTimestamp) {
-            ratio += ratioF;
-            return false;
-        }
-        return true;
+    /**
+     * 大于0表示需要等待，小于等于0表示不需要等待
+     *
+     * @return 返回需要等待的时间
+     */
+    public long limitFPS() {
+        // 距离上一帧时间
+        long sinceLastFrameTime = System.currentTimeMillis() - lastFrameTime;
+        return (long) (ratioF - sinceLastFrameTime);
     }
 
-    public void setFrameStartTs() {
-        frameStartTS = System.currentTimeMillis();
-    }
-
-    public long getSleepTime() {
-        return Math.max(0, ratioF - (System.currentTimeMillis() - frameStartTS));
+    public void setCurrentFrameTime() {
+        lastFrameTime = System.currentTimeMillis();
     }
 }

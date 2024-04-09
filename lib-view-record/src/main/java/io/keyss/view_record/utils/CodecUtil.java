@@ -20,8 +20,6 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.os.Build;
 
-import androidx.annotation.RequiresApi;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -204,8 +202,7 @@ public class CodecUtil {
         for (MediaCodecInfo mediaCodecInfo : mediaCodecInfoList) {
             if (isHardwareAccelerated(mediaCodecInfo)) {
                 mediaCodecInfoHardware.add(mediaCodecInfo);
-                if (cbrPriority && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                        && isCBRModeSupported(mediaCodecInfo, mime)) {
+                if (cbrPriority && isCBRModeSupported(mediaCodecInfo, mime)) {
                     mediaCodecInfoHardwareCBR.add(mediaCodecInfo);
                 }
             }
@@ -366,14 +363,17 @@ public class CodecUtil {
                 || (!name.startsWith("omx.") && !name.startsWith("c2."));
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    //@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public static boolean isCBRModeSupported(MediaCodecInfo mediaCodecInfo, String mime) {
-        MediaCodecInfo.CodecCapabilities codecCapabilities =
-                mediaCodecInfo.getCapabilitiesForType(mime);
-        MediaCodecInfo.EncoderCapabilities encoderCapabilities =
-                codecCapabilities.getEncoderCapabilities();
-        return encoderCapabilities.isBitrateModeSupported(
-                MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+        MediaCodecInfo.CodecCapabilities codecCapabilities = mediaCodecInfo.getCapabilitiesForType(mime);
+        MediaCodecInfo.EncoderCapabilities encoderCapabilities = codecCapabilities.getEncoderCapabilities();
+        return encoderCapabilities.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+    }
+
+    public static boolean isVBRModeSupported(MediaCodecInfo mediaCodecInfo, String mime) {
+        MediaCodecInfo.CodecCapabilities codecCapabilities = mediaCodecInfo.getCapabilitiesForType(mime);
+        MediaCodecInfo.EncoderCapabilities encoderCapabilities = codecCapabilities.getEncoderCapabilities();
+        return encoderCapabilities.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
     }
 
     /**

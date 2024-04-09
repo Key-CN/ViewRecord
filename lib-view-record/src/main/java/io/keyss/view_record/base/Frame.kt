@@ -40,4 +40,8 @@ class Frame {
         this.size = size
         this.timeStamp = timeStamp
     }
+
+    override fun toString(): String {
+        return "Frame(offset=$offset, size=$size, timeStamp=$timeStamp)"
+    }
 }

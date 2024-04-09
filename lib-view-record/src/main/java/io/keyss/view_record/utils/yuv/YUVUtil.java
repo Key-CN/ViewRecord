@@ -79,9 +79,9 @@ public class YUVUtil {
     public static byte[] NV21toYUV420byColor(byte[] input, int width, int height,
                                              FormatVideoEncoder formatVideoEncoder) {
         switch (formatVideoEncoder) {
-            case YUV420PLANAR:
+            case YUV420_PLANAR:
                 return NV21Utils.toI420(input, width, height);
-            case YUV420SEMIPLANAR:
+            case YUV420_SEMI_PLANAR:
                 return NV21Utils.toNV12(input, width, height);
             default:
                 return null;
@@ -106,9 +106,9 @@ public class YUVUtil {
     public static byte[] YV12toYUV420byColor(byte[] input, int width, int height,
                                              FormatVideoEncoder formatVideoEncoder) {
         switch (formatVideoEncoder) {
-            case YUV420PLANAR:
+            case YUV420_PLANAR:
                 return YV12Utils.toI420(input, width, height);
-            case YUV420SEMIPLANAR:
+            case YUV420_SEMI_PLANAR:
                 return YV12Utils.toNV12(input, width, height);
             default:
                 return null;
