@@ -95,6 +95,10 @@ public abstract class BaseEncoder implements EncoderCallback {
     }
 
     private void initCodec() {
+        // reset的时候可能出现
+        if (codec == null) {
+            throw new IllegalStateException("codec未初始化");
+        }
         codec.start();
         running = true;
     }
@@ -120,7 +124,7 @@ public abstract class BaseEncoder implements EncoderCallback {
             shouldReset = callback.onEncodeError(TAG, e);
         }
         if (shouldReset) {
-            Log.e(TAG, "Encoder crashed, trying to recover it");
+            Log.e(TAG, "Encoder crashed, trying to recover it", e);
             reset();
         }
     }
@@ -161,7 +165,9 @@ public abstract class BaseEncoder implements EncoderCallback {
             codec.stop();
             codec.release();
             codec = null;
-        } catch (IllegalStateException | NullPointerException e) {
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping codec", e);
+        } finally {
             codec = null;
         }
         prepared = false;
@@ -225,8 +231,7 @@ public abstract class BaseEncoder implements EncoderCallback {
     }
 
     @Override
-    public void inputAvailable(@NonNull MediaCodec mediaCodec, int inBufferIndex)
-            throws IllegalStateException {
+    public void inputAvailable(@NonNull MediaCodec mediaCodec, int inBufferIndex) throws IllegalStateException {
         // 试试，防止偷跑
         if (!running) {
             Log.d(TAG, "inputAvailable: not running");
@@ -256,8 +261,7 @@ public abstract class BaseEncoder implements EncoderCallback {
             }
 
             @Override
-            public void onOutputBufferAvailable(@NonNull MediaCodec mediaCodec, int outBufferIndex,
-                                                @NonNull MediaCodec.BufferInfo bufferInfo) {
+            public void onOutputBufferAvailable(@NonNull MediaCodec mediaCodec, int outBufferIndex, @NonNull MediaCodec.BufferInfo bufferInfo) {
                 try {
                     outputAvailable(mediaCodec, outBufferIndex, bufferInfo);
                 } catch (IllegalStateException e) {

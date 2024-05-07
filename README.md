@@ -8,7 +8,9 @@ Android View Record: Screen Record, Video Record, Audio Record
 
 ## 2024/04/09 修复在Android14上的采集问题
 主要是在PixelCopy.request中，不像前代api会阻塞返回了，正如之前在RecordViewUtil中134行注释中所说的，在这一代api中突然生效了
+
 目前已知在Android7.1.1 API25上还有问题，Muxer相关
+
 并且在非采用PixelCopy.request方案的录制中，采集摄像头View需使用TextureView，直接使用CameraX中的Texture无法采集到，会是黑屏
 
 ## Nov 23 2023 新增一个录制类 ViewRecorder

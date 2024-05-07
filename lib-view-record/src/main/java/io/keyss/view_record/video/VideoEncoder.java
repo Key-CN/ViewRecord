@@ -62,10 +62,8 @@ public class VideoEncoder extends BaseEncoder {
         TAG = "VideoEncoder";
     }
 
-    public boolean prepareVideoEncoder(int width, int height, int fps, int bitRate,
-                                       int iFrameInterval, FormatVideoEncoder formatVideoEncoder) {
-        return prepareVideoEncoder(width, height, fps, bitRate,
-                iFrameInterval, formatVideoEncoder, -1, -1);
+    public boolean prepareVideoEncoder(int width, int height, int fps, int bitRate, int iFrameInterval, FormatVideoEncoder formatVideoEncoder) {
+        return prepareVideoEncoder(width, height, fps, bitRate, iFrameInterval, formatVideoEncoder, -1, -1);
     }
 
     /**
@@ -195,8 +193,7 @@ public class VideoEncoder extends BaseEncoder {
      * Prepare encoder with default parameters
      */
     public boolean prepareVideoEncoder() {
-        return prepareVideoEncoder(width, height, fps, bitRate, iFrameInterval,
-                formatVideoEncoder, avcProfile, avcProfileLevel);
+        return prepareVideoEncoder(width, height, fps, bitRate, iFrameInterval, formatVideoEncoder, avcProfile, avcProfileLevel);
     }
 
     public void setVideoBitrateOnFly(int bitrate) {

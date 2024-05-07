@@ -45,18 +45,18 @@ class ViewRecorder {
 
     /** 视频编码器 */
     private lateinit var videoEncoder: VideoEncoder
+    private var videoInitSuccess = false
 
-    private var audioInitialized = false
+    private var audioInitSuccess = false
     private lateinit var audioEncoder: AudioEncoder
     private lateinit var microphoneManager: MicrophoneManager
 
-
-    //private var audioEncoder: AudioEncoder? = null
     private lateinit var recordController: AndroidMuxerRecordController
 
     /**
-     * 只录视频
+     * 只录视频时只初始化视频编码器
      */
+    @Throws
     fun initJustVideo(
         window: Window,
         view: View,
@@ -80,7 +80,7 @@ class ViewRecorder {
 
             override fun onVideoFormat(mediaFormat: MediaFormat) {
                 Log.d(TAG, "onVideoFormat() called with: mediaFormat = $mediaFormat")
-                recordController.setVideoFormat(mediaFormat, !audioInitialized)
+                recordController.setVideoFormat(mediaFormat, !audioInitSuccess)
             }
         })
         // 设置获取帧的方法
@@ -91,7 +91,7 @@ class ViewRecorder {
         })
         // 通过获取一帧来初始化视频参数
         val frameBitmap = getFrameBitmap(width)
-        videoEncoder.prepareVideoEncoder(
+        videoInitSuccess = videoEncoder.prepareVideoEncoder(
             frameBitmap.width,
             frameBitmap.height,
             fps,
@@ -107,6 +107,7 @@ class ViewRecorder {
     /**
      * 初始化录制：view视频+mic音频
      */
+    @Throws
     fun init(
         window: Window,
         view: View,
@@ -140,27 +141,31 @@ class ViewRecorder {
             }
         })
 
-        audioInitialized = microphoneManager.createMicrophone(
+        audioInitSuccess = microphoneManager.createMicrophone(
             MediaRecorder.AudioSource.DEFAULT,
             audioSampleRate,
             isStereo,
             false,
             false
         )
-        audioInitialized = audioInitialized && audioEncoder.prepareAudioEncoder(
+        if (!audioInitSuccess) {
+            // 已失败，不再初始化音频编码器
+            return
+        }
+        audioInitSuccess = audioEncoder.prepareAudioEncoder(
             audioBitRate,
             microphoneManager.sampleRate,
             microphoneManager.channel == AudioFormat.CHANNEL_IN_STEREO,
             microphoneManager.inputBufferSize
         )
-        if (audioInitialized) {
-            audioEncoder.start()
-            microphoneManager.start()
-        }
     }
 
-
+    @Throws
     fun startRecord(path: String, statusListener: Listener, errorListener: EncoderErrorCallback) {
+        // 判断下是否已经初始化，及初始化是否成功
+        if (!this::videoEncoder.isInitialized || !videoInitSuccess) {
+            throw IllegalStateException("videoEncoder is not initialized, videoInitSuccess=$videoInitSuccess")
+        }
         if (isStartRecord) {
             return
         }
@@ -170,6 +175,10 @@ class ViewRecorder {
         // 启动并设置正确的回调
         recordController.startRecord(path, statusListener)
         videoEncoder.start()
+        if (audioInitSuccess) {
+            audioEncoder.start()
+            microphoneManager.start()
+        }
     }
 
     fun stopRecord() {
@@ -180,7 +189,7 @@ class ViewRecorder {
         recordController.stopRecord()
         if (!recordController.isRecording) {
             videoEncoder.stop()
-            if (audioInitialized) {
+            if (audioInitSuccess) {
                 microphoneManager.stop()
                 audioEncoder.stop()
             }
