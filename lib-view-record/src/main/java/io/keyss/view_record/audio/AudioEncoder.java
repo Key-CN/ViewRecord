@@ -60,7 +60,7 @@ public class AudioEncoder extends BaseEncoder {
         try {
             MediaCodecInfo encoder = chooseEncoder(CodecUtil.AAC_MIME);
             if (encoder != null) {
-                Log.i(TAG, "Encoder selected " + encoder.getName());
+                Log.i(TAG, "Audio Encoder selected " + encoder.getName());
                 codec = MediaCodec.createByCodecName(encoder.getName());
             } else {
                 Log.e(TAG, "Valid encoder not found");
@@ -154,7 +154,7 @@ public class AudioEncoder extends BaseEncoder {
             mediaCodecInfoList = CodecUtil.getAllEncoders(CodecUtil.AAC_MIME, true);
         }
 
-        Log.i(TAG, mediaCodecInfoList.size() + " encoders found");
+        Log.i(TAG, mediaCodecInfoList.size() + " audio encoders found");
         if (mediaCodecInfoList.isEmpty()) return null;
         else return mediaCodecInfoList.get(0);
     }

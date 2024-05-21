@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -16,7 +17,10 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.constraintlayout.utils.widget.MotionButton
 import androidx.core.content.ContextCompat
+import androidx.core.view.isGone
+import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.ListenableFuture
@@ -24,6 +28,7 @@ import io.keyss.view_record.ISourceProvider
 import io.keyss.view_record.RecordEncoder
 import io.keyss.view_record.recording.RecordController
 import io.keyss.view_record.recording.ViewRecorder
+import io.keyss.view_record.utils.CodecUtil
 import io.keyss.view_record.utils.RecordViewUtil
 import io.keyss.view_record.utils.VRLogger
 import io.keyss.view_record.video.EncoderErrorCallback
@@ -31,6 +36,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Arrays
 
 class MainActivity : AppCompatActivity() {
     private val TAG = "MainTAG"
@@ -38,9 +44,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var layoutRecordContentView: androidx.constraintlayout.widget.ConstraintLayout
     private lateinit var tvTime: androidx.appcompat.widget.AppCompatTextView
     private lateinit var btnStart: com.google.android.material.button.MaterialButton
-    private lateinit var btnStop: androidx.constraintlayout.utils.widget.MotionButton
-    private lateinit var btnCapture: androidx.constraintlayout.utils.widget.MotionButton
+    private lateinit var btnStop: MotionButton
+    private lateinit var btnCapture: MotionButton
     private lateinit var ivCapture: AppCompatImageView
+    private lateinit var videoView: VideoView
 
     private var mCamera: Camera? = null
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
@@ -75,6 +82,21 @@ class MainActivity : AppCompatActivity() {
         btnStop.setOnClickListener {
             stopRecord()
         }
+        videoView = findViewById(R.id.video_view_main_activity)
+        videoView.setOnCompletionListener {
+            videoView.isGone = true
+            Toast.makeText(this, "播放结束", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<MotionButton>(R.id.btn_play_main_activity).setOnClickListener {
+            if (mLastRecordFile?.absolutePath.isNullOrBlank()) {
+                Toast.makeText(this, "请先录制", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            videoView.isVisible = true
+            videoView.setVideoPath(mLastRecordFile?.absolutePath)
+            videoView.start()
+        }
+
         ivCapture = findViewById(R.id.iv_capture_main_activity)
         btnCapture = findViewById(R.id.btn_capture_record_main_activity)
         btnCapture.setOnClickListener {
@@ -87,6 +109,29 @@ class MainActivity : AppCompatActivity() {
         initFunc()
         VRLogger.logLevel = Log.VERBOSE
         checkPermission()
+
+        test2()
+    }
+
+    private fun test2() {
+        val mime = "video/avc"
+        //CodecUtil.getAllHardwareEncoders("video/avc")
+        val allHardwareEncoders = CodecUtil.getAllHardwareEncoders(mime)
+        for (mediaCodecInfo in allHardwareEncoders) {
+            Log.i(TAG, "HardwareEncoders: " + mediaCodecInfo.name)
+            Log.i(
+                TAG,
+                "Color supported by this encoder: " + Arrays.toString(mediaCodecInfo.getCapabilitiesForType(mime).colorFormats)
+            )
+        }
+        val allSoftwareEncoders = CodecUtil.getAllSoftwareEncoders(mime)
+        for (mediaCodecInfo in allSoftwareEncoders) {
+            Log.i(TAG, "SoftwareEncoders: " + mediaCodecInfo.name)
+            Log.i(
+                TAG,
+                "Color supported by this encoder: " + Arrays.toString(mediaCodecInfo.getCapabilitiesForType(mime).colorFormats)
+            )
+        }
     }
 
     private fun initFunc() {
@@ -126,6 +171,13 @@ class MainActivity : AppCompatActivity() {
             checkPermission()
             return
         }
+        tvTime.text = "开始"
+        //method1(view)
+        //method2(view)
+        //method3(view)
+        method4(view)
+        //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
+        //mRecordEncoder.start()
         mTimerJob = lifecycleScope.launch {
             var time = 0
             while (this.isActive) {
@@ -133,19 +185,12 @@ class MainActivity : AppCompatActivity() {
                 kotlinx.coroutines.delay(1000)
             }
         }
-        //method1(view)
-        //method2(view)
-        //method3(view)
-        method4(view)
-        //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
-        //mRecordEncoder.start()
     }
 
-    private fun method4(view: View) {
-        if (viewRecord.isStartRecord) {
-            Toast.makeText(this, "正在录制中", Toast.LENGTH_SHORT).show()
-            return
-        }
+    /**
+     * 测试手动初始化
+     */
+    private fun init(view: View) {
         viewRecord.init(
             window = window,
             view = view,
@@ -165,6 +210,14 @@ class MainActivity : AppCompatActivity() {
             videoBitRate = 4_000_000,
             iFrameInterval = 1,
         )*/
+    }
+
+    private fun method4(view: View) {
+        if (viewRecord.isStartRecord) {
+            Toast.makeText(this, "正在录制中", Toast.LENGTH_SHORT).show()
+            return
+        }
+        init(view)
         val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
         mLastRecordFile = outputFile
         // 先check一下，最后对比下参数

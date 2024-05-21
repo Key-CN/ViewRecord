@@ -4,7 +4,7 @@ plugins {
 }
 
 //ext.libVersion = "1.0.2-kt1.6.10"
-ext.libVersion = "1.0.9"
+ext.libVersion = "1.0.10"
 
 android {
     namespace 'io.keyss.view_record'

@@ -33,7 +33,6 @@ import java.util.List;
 import io.keyss.view_record.base.BaseEncoder;
 import io.keyss.view_record.base.Frame;
 import io.keyss.view_record.utils.CodecUtil;
-import io.keyss.view_record.utils.yuv.YUVUtil;
 
 /**
  * Created by pedro on 19/01/17.
@@ -84,7 +83,7 @@ public class VideoEncoder extends BaseEncoder {
         try {
             if (encoder != null) {
                 // 返回不为null，说明设置的颜色和格式都支持
-                Log.i(TAG, "Encoder selected " + encoder.getName());
+                Log.i(TAG, "Video Encoder selected " + encoder.getName());
                 codec = MediaCodec.createByCodecName(encoder.getName());
                 if (this.formatVideoEncoder == FormatVideoEncoder.YUV420Dynamical) {
                     this.formatVideoEncoder = chooseColorDynamically(encoder);
@@ -92,15 +91,29 @@ public class VideoEncoder extends BaseEncoder {
                         Log.e(TAG, "YUV420 dynamical choose failed");
                         return false;
                     }
+                } else {
+                    // 验证选择的颜色是否在颜色支持列表
+                    //Arrays.stream(encoder.getCapabilitiesForType(type).colorFormats).anyMatch(element -> element == formatVideoEncoder.getFormatCodec());
+                    boolean contains = false;
+                    for (int colorFormat : encoder.getCapabilitiesForType(type).colorFormats) {
+                        if (colorFormat == formatVideoEncoder.getFormatCodec()) {
+                            contains = true;
+                            break;
+                        }
+                    }
+                    if (!contains) {
+                        Log.e(TAG, "非动态, 手动选择的Color format [" + formatVideoEncoder + "] not supported");
+                        return false;
+                    }
                 }
-                Log.i(TAG, "YUV420 dynamical choose " + this.formatVideoEncoder.toString());
+                Log.i(TAG, "YUV420 choose: " + this.formatVideoEncoder.toString() + ", 传入: " + formatVideoEncoder);
             } else {
                 Log.e(TAG, "Valid encoder not found");
                 return false;
             }
             MediaFormat videoFormat = MediaFormat.createVideoFormat(type, width, height);
             String resolution = width + "x" + height;
-            Log.i(TAG, "Prepare video info: " + this.formatVideoEncoder.toString() + ", " + resolution);
+            Log.i(TAG, "Prepare video info: " + this.formatVideoEncoder.toString() + ", resolution=" + resolution);
             videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, this.formatVideoEncoder.getFormatCodec());
             videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
             videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
@@ -108,13 +121,15 @@ public class VideoEncoder extends BaseEncoder {
             videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval);
             //Set CBR mode if supported by encoder.
             if (CodecUtil.isCBRModeSupported(encoder, type)) {
+                // 定码率
                 Log.i(TAG, "set bitrate mode CBR");
                 videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
             } else if (CodecUtil.isVBRModeSupported(encoder, type)) {
+                // 变码率
                 Log.i(TAG, "set bitrate mode VBR");
                 videoFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
             } else {
-                Log.i(TAG, "bitrate mode CBR not supported using default mode");
+                Log.i(TAG, "bitrate mode CBR and VBR all not supported using default mode");
             }
             if (this.avcProfile > 0) {
                 // MediaFormat.KEY_PROFILE, API > 21
@@ -146,9 +161,6 @@ public class VideoEncoder extends BaseEncoder {
         if (resetTs) {
             fpsLimiter.setFPS(fps);
         }
-        if (formatVideoEncoder != FormatVideoEncoder.SURFACE) {
-            YUVUtil.preAllocateBuffers(width * height * 3 / 2);
-        }
         Log.i(TAG, "started");
     }
 
@@ -168,22 +180,27 @@ public class VideoEncoder extends BaseEncoder {
 
     /**
      * mediaCodecList: [2135033992, 19, 21, 20, 39, 2130708361(COLOR_FormatSurface)]
-     * 一般2135033992都是支持的，但我目前没有找到合适的转换方法
+     * 一般2135033992(COLOR_FormatYUV420Flexible)都是支持的，但我目前没有找到合适的转换方法
      * 21对应的是{@link android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar}
      * 2135033992对应的是{@link android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible}
+     * 有限选择21、19，很多设备只有[]两种，另外两种转换可能会花屏
+     * 虽然很多设备看起来支持很多颜色，但是最终转换的时候可能会花屏或者直接卡死
      */
     private FormatVideoEncoder chooseColorDynamically(MediaCodecInfo mediaCodecInfo) {
         int[] colorFormats = mediaCodecInfo.getCapabilitiesForType(type).colorFormats;
         Log.i(TAG, "Color supported by this encoder: " + Arrays.toString(colorFormats));
-        for (int color : colorFormats) {
-            if (color == FormatVideoEncoder.YUV420_PLANAR.getFormatCodec()) {
-                return FormatVideoEncoder.YUV420_PLANAR;
-            } else if (color == FormatVideoEncoder.YUV420_SEMI_PLANAR.getFormatCodec()) {
-                return FormatVideoEncoder.YUV420_SEMI_PLANAR;
-            } else if (color == FormatVideoEncoder.YUV420_PACKED_PLANAR.getFormatCodec()) {
-                return FormatVideoEncoder.YUV420_PACKED_PLANAR;
-            } else if (color == FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR.getFormatCodec()) {
-                return FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR;
+        // 做一个优先选择排序
+        FormatVideoEncoder[] preferredOrder = {
+                FormatVideoEncoder.YUV420_SEMI_PLANAR,
+                FormatVideoEncoder.YUV420_PLANAR,
+                FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR,
+                FormatVideoEncoder.YUV420_PACKED_PLANAR,
+        };
+        for (FormatVideoEncoder format : preferredOrder) {
+            for (int color : colorFormats) {
+                if (color == format.getFormatCodec()) {
+                    return format;
+                }
             }
         }
         return null;
@@ -264,23 +281,43 @@ public class VideoEncoder extends BaseEncoder {
             mediaCodecInfoList = CodecUtil.getAllEncoders(mime, true, true);
         }
 
-        Log.i(TAG, mediaCodecInfoList.size() + " encoders found");
+        Log.i(TAG, force + ", " + mediaCodecInfoList.size() + " video encoders found");
         for (MediaCodecInfo mediaCodecInfo : mediaCodecInfoList) {
             Log.i(TAG, "Encoder: " + mediaCodecInfo.getName());
+            Log.i(TAG, "Color supported by this encoder: " + Arrays.toString(mediaCodecInfo.getCapabilitiesForType(mime).colorFormats));
+        }
+
+        /*int[] preferredColorOrder = {
+                FormatVideoEncoder.YUV420_SEMI_PLANAR.getFormatCodec(),
+                FormatVideoEncoder.YUV420_PLANAR.getFormatCodec(),
+                FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR.getFormatCodec(),
+                FormatVideoEncoder.YUV420_PACKED_PLANAR.getFormatCodec(),
+        };*/
+        List<Integer> preferredColorOrder = Arrays.asList(
+                FormatVideoEncoder.YUV420_SEMI_PLANAR.getFormatCodec(),
+                FormatVideoEncoder.YUV420_PLANAR.getFormatCodec(),
+                FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR.getFormatCodec(),
+                FormatVideoEncoder.YUV420_PACKED_PLANAR.getFormatCodec()
+        );
+        // 如果指定颜色的话需要搜索多个编码器
+        for (MediaCodecInfo mediaCodecInfo : mediaCodecInfoList) {
             MediaCodecInfo.CodecCapabilities codecCapabilities = mediaCodecInfo.getCapabilitiesForType(mime);
-            // 获取支持的颜色格式
+            // 是否有支持的颜色格式
             for (int color : codecCapabilities.colorFormats) {
-                Log.i(TAG, "Color supported: " + color);
                 if (formatVideoEncoder == FormatVideoEncoder.SURFACE) {
                     if (color == FormatVideoEncoder.SURFACE.getFormatCodec()) return mediaCodecInfo;
                 } else {
-                    // check if encoder support any yuv420 color
-                    if (color == FormatVideoEncoder.YUV420_PLANAR.getFormatCodec()
-                            || color == FormatVideoEncoder.YUV420_SEMI_PLANAR.getFormatCodec()
-                            || color == FormatVideoEncoder.YUV420_PACKED_PLANAR.getFormatCodec()
-                            || color == FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR.getFormatCodec()
-                    ) {
-                        return mediaCodecInfo;
+                    // 大于0为指定了颜色格式，需要找到支持该颜色的编码器
+                    if (formatVideoEncoder.getFormatCodec() > 0) {
+                        if (color == formatVideoEncoder.getFormatCodec()) {
+                            return mediaCodecInfo;
+                        }
+                    } else {
+                        // check if encoder support any yuv420 color
+                        // note: 一般存在多种编码器，目前没做优先选择某种，未指定的情况下返回第一种
+                        if (preferredColorOrder.contains(color)) {
+                            return mediaCodecInfo;
+                        }
                     }
                 }
             }
@@ -294,7 +331,7 @@ public class VideoEncoder extends BaseEncoder {
         long start = System.currentTimeMillis();
         Frame frame = isRealTime && null != iFrameDataGetter ? iFrameDataGetter.getFrameData() : queue.take();
         long sinceGetFrame = System.currentTimeMillis() - start;
-        //VRLogger.v("frame=" + frame);
+        //VRLogger.v("取帧耗时: " + sinceGetFrame + "ms, frame=" + frame);
         // 所以这里可能会刚好已经停止了
         if (frame == null) return null;
         // 跟当前帧理应的时间差，再减去一个处理时间
@@ -304,7 +341,8 @@ public class VideoEncoder extends BaseEncoder {
             //VRLogger.v("frame limit discarded, sleepTime=" + diffTime + "ms");
             return getInputFrame();
         }
-        fpsLimiter.setCurrentFrameTime();
+        // 上一帧时间应为取帧时的时间
+        fpsLimiter.setLastFrameTime(start);
         return frame;
     }
 

@@ -6,6 +6,20 @@ Android View Record: Screen Record, Video Record, Audio Record
 
 > 注释保留了很多，因为本身也是边学习边输出，出于交流分享共同学习的目的，保留了注释，方便大家理解和避开一些坑
 
+## 2024/05/20
+NOTE: 已知在就算支持的颜色格式中，也可能会出现oom，如420Planar在荣耀某款平板上，华为（确切的说是海思或者麒麟的芯片）在颜色格式上，support列表中是支持但是还是有很多不支持的问题，会导致OOM，网站这个问题遇到的也很多，一搜一大把，大致Log类似于：
+```
+ W  hw configLocalPlayBack err = -22
+ W  do not know color format 0x7f000001 = 2130706433
+ I  setupAVCEncoderParameters with [profile: Baseline] [level: Level3]
+ I  [OMX.hisi.video.encoder.avc] cannot encode color aspects. Ignoring.
+ I  [OMX.hisi.video.encoder.avc] cannot encode HDR static metadata. Ignoring.
+ I  setupVideoEncoder succeeded
+ I  [OMX.hisi.video.encoder.avc] got color aspects (R:0(Unspecified), P:0(Unspecified), M:0(Unspecified), T:0(Unspecified)) err=-1010(??)
+```
+展示解决方案只能是不使用19（COLOR_FormatYUV420Planar），21（COLOR_FormatYUV420SemiPlanar）没问题，所以我新增了一个优选列表，优先选择21
+并且OMX.google.h264.encoder这个编码器在华为上也无法使用，编码的视频有问题无法播放，别的机型测了几款没问题。
+
 ## 2024/04/09 修复在Android14上的采集问题
 主要是在PixelCopy.request中，不像前代api会阻塞返回了，正如之前在RecordViewUtil中134行注释中所说的，在这一代api中突然生效了
 
@@ -33,6 +47,10 @@ chromium中对硬编部分，做了CPU判断，从我的代码上线至今收集
 
 ## Usage
 具体可以参照Demo，MainActivity中的调用
+
+* 最新的方案参考method4(view: View)方法
+
+**旧：**
 1. 实现```ISourceProvider```接口
 2. 指定输出路径
 3. 设定参数
@@ -85,17 +103,17 @@ VRLogger.logLevel = Log.VERBOSE 或者 Log.DEBUG 级别
 
 
 ## 难点
-1. 帧率控制。
-2. 启动帧同步，目前采用视频帧启动后再输入音频。
-3. 不同机型的颜色格式适配，暂未完全解决。
+1. 帧率控制。(已解决)
+2. 启动帧同步，目前采用视频帧启动后再输入音频。目前还是会丢启动时的部分帧，待解决
+3. 不同机型的颜色格式适配，暂未完全解决。（大致解决，具体原因看5/20那条更新）
 4. 视频输入源耗时问题，会导致实际帧率下降，大分辨率的情况下比较明显，如果异步采集合成，时间一长，积压的帧多了内存会爆炸，后续可能需要改算法方案来提高效率。
 
 
 ## To-Do List
 - [ ] 代码优化抽象，方便后续升级扩展（第一个版本写的比较急）
 - [ ] 上传到公共仓库
-- [ ] Bitmap - Pixels 算法效率提升
-- [ ] 机型适配
-- [ ] 帧率提升
-- [ ] 麦克风降噪
+- [x] Bitmap - Pixels 算法效率提升
+- [x] 机型适配
+- [x] 帧率提升
+- [x] 麦克风降噪
 - [ ] 合入其他音频源

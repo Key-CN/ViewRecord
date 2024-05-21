@@ -41,6 +41,10 @@ public class FpsLimiter {
     }
 
     public void setCurrentFrameTime() {
-        lastFrameTime = System.currentTimeMillis();
+        setLastFrameTime(System.currentTimeMillis());
+    }
+
+    public void setLastFrameTime(long lastFrameTime) {
+        this.lastFrameTime = lastFrameTime;
     }
 }

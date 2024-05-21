@@ -13,8 +13,8 @@ import io.keyss.view_record.audio.GetMicrophoneData
 import io.keyss.view_record.audio.MicrophoneManager
 import io.keyss.view_record.base.Frame
 import io.keyss.view_record.recording.RecordController.Listener
-import io.keyss.view_record.utils.EncoderTools
 import io.keyss.view_record.utils.RecordViewUtil
+import io.keyss.view_record.utils.yuv.ConvertUtil
 import io.keyss.view_record.video.EncoderErrorCallback
 import io.keyss.view_record.video.FormatVideoEncoder
 import io.keyss.view_record.video.GetVideoData
@@ -98,9 +98,11 @@ class ViewRecorder {
             videoBitRate,
             iFrameInterval,
             FormatVideoEncoder.YUV420Dynamical
-            //FormatVideoEncoder.YUV420_SEMI_PLANAR
-            // 用这个会anr？
-            //FormatVideoEncoder.YUV420FLEXIBLE
+            // NOTE: 已知在就算支持的颜色格式中，也可能会出现oom，如YUV420_PLANAR在荣耀某款平板上
+            //FormatVideoEncoder.YUV420_SEMI_PLANAR//21 V
+            //FormatVideoEncoder.YUV420_PLANAR//19 V
+            //FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR//39 V
+            //FormatVideoEncoder.YUV420_PACKED_PLANAR//20 V
         )
     }
 
@@ -174,11 +176,11 @@ class ViewRecorder {
         videoEncoder.setEncoderErrorCallback(errorListener)
         // 启动并设置正确的回调
         recordController.startRecord(path, statusListener)
-        videoEncoder.start()
         if (audioInitSuccess) {
-            audioEncoder.start()
             microphoneManager.start()
+            audioEncoder.start()
         }
+        videoEncoder.start()
     }
 
     fun stopRecord() {
@@ -188,13 +190,16 @@ class ViewRecorder {
         isStartRecord = false
         recordController.stopRecord()
         if (!recordController.isRecording) {
+            Log.i(TAG, "stopRecord() called not isRecording")
             videoEncoder.stop()
             if (audioInitSuccess) {
-                microphoneManager.stop()
                 audioEncoder.stop()
+                microphoneManager.stop()
             }
             recordController.resetFormats()
         }
+        videoInitSuccess = false
+        audioInitSuccess = false
     }
 
     private fun getFrameBytes(): ByteArray {
@@ -204,13 +209,10 @@ class ViewRecorder {
         //val start = System.currentTimeMillis()
         val bitmap = getFrameBitmap(videoEncoder.width)
         //val getBitmapCost = System.currentTimeMillis() - start
-        val inputData: ByteArray = EncoderTools.getPixels(
-            videoEncoder.formatVideoEncoder.formatCodec,
-            bitmap.width,
-            bitmap.height,
-            bitmap
+        val inputData: ByteArray = ConvertUtil.convertBitmapToYUVByteArray(
+            bitmap,
+            videoEncoder.formatVideoEncoder.formatCodec
         )
-        // 21 = COLOR_FormatYUV420SemiPlanar
         //VRLogger.v("getFrameBytes() bitmap width=${videoEncoder.width}, colorFormat: ${videoEncoder.formatVideoEncoder.formatCodec}, getBitmapCost: ${getBitmapCost}ms, total cost: ${System.currentTimeMillis() - start}ms")
         return inputData
     }
