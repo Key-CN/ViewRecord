@@ -8,7 +8,7 @@ Android View Record: Screen Record, Video Record, Audio Record
 
 ## 2024/05/20
 NOTE: 已知在就算支持的颜色格式中，也可能会出现oom，如420Planar在荣耀某款平板上，华为（确切的说是海思或者麒麟的芯片）在颜色格式上，support列表中是支持但是还是有很多不支持的问题，会导致OOM，网站这个问题遇到的也很多，一搜一大把，大致Log类似于：
-```
+```logcatfilter
  W  hw configLocalPlayBack err = -22
  W  do not know color format 0x7f000001 = 2130706433
  I  setupAVCEncoderParameters with [profile: Baseline] [level: Level3]
@@ -16,6 +16,22 @@ NOTE: 已知在就算支持的颜色格式中，也可能会出现oom，如420Pl
  I  [OMX.hisi.video.encoder.avc] cannot encode HDR static metadata. Ignoring.
  I  setupVideoEncoder succeeded
  I  [OMX.hisi.video.encoder.avc] got color aspects (R:0(Unspecified), P:0(Unspecified), M:0(Unspecified), T:0(Unspecified)) err=-1010(??)
+```
+```logcatfilter
+# 又发现一列，又是19，420Planar，暂时先把19放到最后选择吧
+# 但是在荣耀9Lite上是正常的，编码器同为OMX.IMG.TOPAZ.VIDEO.Encoder，但荣耀9Lite支持列表颜色更多
+# 荣耀畅玩 7X/BND-AL10 Log
+hw configLocalPlayBack err = -1010
+do not know color format 0x7f000001 = 2130706433
+setupAVCEncoderParameters with [profile: Baseline] [level: Level52]
+[OMX.IMG.TOPAZ.VIDEO.Encoder] cannot encode color aspects. Ignoring.
+[OMX.IMG.TOPAZ.VIDEO.Encoder] cannot encode HDR static metadata. Ignoring.
+setupVideoEncoder succeeded
+ E  signalError(omxError 0x80001001, internalError -12)
+ E  Codec reported err 0xfffffff4, actionCode 0, while in state 5
+ E  [OMX.IMG.TOPAZ.VIDEO.Encoder] ERROR(0x80001000)
+ E  signalError(omxError 0x80001000, internalError -2147483648)
+ E  Codec reported err 0x80001000, actionCode 0, while in state 0
 ```
 展示解决方案只能是不使用19（COLOR_FormatYUV420Planar），21（COLOR_FormatYUV420SemiPlanar）没问题，所以我新增了一个优选列表，优先选择21
 并且OMX.google.h264.encoder这个编码器在华为上也无法使用，编码的视频有问题无法播放，别的机型测了几款没问题。

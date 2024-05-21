@@ -192,9 +192,10 @@ public class VideoEncoder extends BaseEncoder {
         // 做一个优先选择排序
         FormatVideoEncoder[] preferredOrder = {
                 FormatVideoEncoder.YUV420_SEMI_PLANAR,
-                FormatVideoEncoder.YUV420_PLANAR,
                 FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR,
                 FormatVideoEncoder.YUV420_PACKED_PLANAR,
+                // 19,很多华为上存在问题，放最后
+                FormatVideoEncoder.YUV420_PLANAR,
         };
         for (FormatVideoEncoder format : preferredOrder) {
             for (int color : colorFormats) {
