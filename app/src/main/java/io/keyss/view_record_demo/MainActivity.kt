@@ -1,6 +1,5 @@
 package io.keyss.view_record_demo
 
-import android.graphics.Bitmap
 import android.media.MediaCodec
 import android.os.Bundle
 import android.util.Log
@@ -24,13 +23,10 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.ListenableFuture
-import io.keyss.view_record.ISourceProvider
-import io.keyss.view_record.RecordEncoder
 import io.keyss.view_record.recording.RecordController
 import io.keyss.view_record.recording.ViewRecorder
 import io.keyss.view_record.utils.CodecUtil
 import io.keyss.view_record.utils.RecordViewUtil
-import io.keyss.view_record.utils.VRLogger
 import io.keyss.view_record.video.EncoderErrorCallback
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -54,8 +50,6 @@ class MainActivity : AppCompatActivity() {
 
     private var mTimerJob: Job? = null
 
-    //private val mRecordEncoder = RecordAsyncEncoder()
-    private val mRecordEncoder = RecordEncoder()
 
     private val viewRecord = ViewRecorder()
 
@@ -107,7 +101,6 @@ class MainActivity : AppCompatActivity() {
             ivCapture.setImageBitmap(frameBitmap)
         }
         initFunc()
-        VRLogger.logLevel = Log.VERBOSE
         checkPermission()
 
         test2()
@@ -172,12 +165,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         tvTime.text = "开始"
-        //method1(view)
-        //method2(view)
-        //method3(view)
         method4(view)
-        //mRecordEncoder.setUp(sourceProvider, outputFile, 1024_000, true)
-        //mRecordEncoder.start()
         mTimerJob = lifecycleScope.launch {
             var time = 0
             while (this.isActive) {
@@ -190,26 +178,43 @@ class MainActivity : AppCompatActivity() {
     /**
      * 测试手动初始化
      */
-    private fun init(view: View) {
+    private fun init(view: View, isJustVideo: Boolean = false) {
+        if (isJustVideo) {
+            viewRecord.initJustVideo(
+                window = window,
+                view = view,
+                width = 444,
+                fps = 30,
+                videoBitRate = 4_000_000,
+                iFrameInterval = 1,
+            )
+        } else {
+            viewRecord.init(
+                window = window,
+                view = view,
+                width = 720,
+                fps = 30,
+                videoBitRate = 4_000_000,
+                iFrameInterval = 1,
+                audioBitRate = 256_000,
+                audioSampleRate = 44100,
+                isStereo = false,
+            )
+        }
+    }
+
+    private fun initKyxq(view: View) {
         viewRecord.init(
             window = window,
             view = view,
-            width = 555,
-            fps = 30,
-            videoBitRate = 4_000_000,
+            width = 540,
+            fps = 24,
+            videoBitRate = 2000_000,
             iFrameInterval = 1,
             audioBitRate = 192_000,
             audioSampleRate = 44100,
             isStereo = true,
         )
-        /*viewRecord.initJustVideo(
-            window = window,
-            view = view,
-            width = 222,
-            fps = 30,
-            videoBitRate = 4_000_000,
-            iFrameInterval = 1,
-        )*/
     }
 
     private fun method4(view: View) {
@@ -217,8 +222,13 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "正在录制中", Toast.LENGTH_SHORT).show()
             return
         }
-        init(view)
-        val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
+        Log.i(TAG, "method4: init前")
+        init(view, isJustVideo = false)
+        //initKyxq(view)
+        Log.i(TAG, "method4: init后")
+        //val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
+        // 方便pull
+        val outputFile = File(externalCacheDir, "record.mp4")
         mLastRecordFile = outputFile
         // 先check一下，最后对比下参数
         val width = view.width
@@ -238,39 +248,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopMethod4(): Unit {
         viewRecord.stopRecord()
-    }
-
-    private fun stopMethod3(): Unit {
-    }
-
-    private fun method3(view: View) {
-
-    }
-
-    private fun method2(view: View) {
-        mRecordEncoder.start(
-            window,
-            view,
-            isRecordAudio = false
-        ) { isSuccessful: Boolean, result: String ->
-            Log.w(TAG, "onResult() isSuccessful: $isSuccessful, result: $result")
-        }
-    }
-
-    private fun method1(view: View) {
-        val outputFile = File(externalCacheDir, "record_${System.currentTimeMillis()}.mp4")
-        mLastRecordFile = outputFile
-        Log.i(TAG, "startRecord() outputFile: ${outputFile.absolutePath}")
-        val sourceProvider = object : ISourceProvider {
-            override fun next(): Bitmap {
-                return RecordViewUtil.getBitmapFromView(window, view, 540)
-            }
-
-            override fun onResult(isSuccessful: Boolean, result: String) {
-                Log.w(TAG, "onResult() isSuccessful: $isSuccessful, result: $result")
-            }
-        }
-        mRecordEncoder.start(sourceProvider, outputFile, 1024_000, true)
     }
 
     private fun stopRecord() {
@@ -366,13 +343,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun bindPreview(cameraProvider: ProcessCameraProvider) {
         val preview: Preview = Preview.Builder().build()
-
-        val cameraSelector: CameraSelector = CameraSelector.Builder()
-            .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-            .build()
+        cameraProvider.unbind(preview)
+        cameraProvider.unbindAll()
 
         preview.setSurfaceProvider(previewView.surfaceProvider)
 
-        mCamera = cameraProvider.bindToLifecycle(this as LifecycleOwner, cameraSelector, preview)
+        mCamera = try {
+            cameraProvider.bindToLifecycle(this as LifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            cameraProvider.bindToLifecycle(this as LifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview)
+        }
     }
 }

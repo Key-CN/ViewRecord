@@ -12,6 +12,7 @@ import android.view.View
 import android.view.Window
 import androidx.annotation.RequiresApi
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 
@@ -38,17 +39,21 @@ object RecordViewUtil {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             copyPixelFromView(window, targetView, finalWidth)
         } else {
-            convertViewToBitmap(targetView, finalWidth)
+            // 小于Android 8.0,
+            // fixme: thread=VideoEncoder, Only the original thread that created a view hierarchy can touch its views.
+            // 7.1.2 和 7.0 能复现，高版本不会
+            drawViewToBitmap(targetView, finalWidth)
         }
     }
 
     /**
-     * Android 26(O)(8.0)以下的版本，使用此方法，某些情况下颜色有偏差，已经View采集不全，比如Android14上摄像头内容未采集到
+     * Android 26(O)(8.0)以下的版本，使用此方法，某些情况下颜色有偏差，以及View采集不全，就算是TextureView也采集不到，但是其他view可以
+     * 所以此方法不适用于录制带其他类似Texture或者Surface的View
      * 如果采用drawingCache.copy宽高未生效，还是View原始的宽高，要生效需采用Canvas方式
      * drawingCache.copy耗时：6-9ms, Canvas方式还更快，所以目前改为Canvas实现
      */
     @Throws
-    fun convertViewToBitmap(targetView: View, width: Int): Bitmap {
+    fun drawViewToBitmap(targetView: View, width: Int): Bitmap {
         // 优化宽高
         val recordWidth = if (width % 2 != 0) {
             width - 1
@@ -64,14 +69,21 @@ object RecordViewUtil {
         if (recordHeight % 2 != 0) {
             recordHeight -= 1
         }
+        // ARGB_8888摄像头一块会是透明的， Bitmap.Config.RGB_565的背景色会有点问题，因为demo背景色用了alpha
         val bitmap = Bitmap.createBitmap(recordWidth, recordHeight, mBitmapConfig)
         val canvas = Canvas(bitmap)
         // 保存当前状态，目前只改变一次，多余
         //val saveCount = canvas.save()
         // 缩放Canvas来匹配目标Bitmap
         canvas.scale(recordWidth.toFloat() / targetView.width, recordHeight.toFloat() / targetView.height)
-        // 将View绘制到Canvas上
-        targetView.draw(canvas)
+        val latch = CountDownLatch(1)
+        mMainHandler.post {
+            Log.i(TAG, "drawViewToBitmap: current Thread: ${Thread.currentThread().name}")
+            // 将View绘制到Canvas上
+            targetView.draw(canvas)
+            latch.countDown()
+        }
+        latch.await(100, TimeUnit.MILLISECONDS)
         // 恢复Canvas状态
         //canvas.restoreToCount(saveCount)
         return bitmap
@@ -100,7 +112,6 @@ object RecordViewUtil {
         if (recordHeight % 2 != 0) {
             recordHeight -= 1
         }
-
         // 黑屏
         // val bitmap = Bitmap.createBitmap(recordWidth, recordHeight, Bitmap.Config.RGB_565)
         //准备一个bitmap对象，用来将copy出来的区域绘制到此对象中，view应该是没有alpha的

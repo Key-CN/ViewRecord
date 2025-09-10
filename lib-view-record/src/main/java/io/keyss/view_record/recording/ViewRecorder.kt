@@ -64,6 +64,7 @@ class ViewRecorder {
         fps: Int = 24,
         videoBitRate: Int = 4_000_000,
         iFrameInterval: Int = 1,
+        formatVideoEncoder: FormatVideoEncoder? = null,
     ) {
         if (isStartRecord) {
             throw IllegalStateException("recording is running")
@@ -97,7 +98,7 @@ class ViewRecorder {
             fps,
             videoBitRate,
             iFrameInterval,
-            FormatVideoEncoder.YUV420Dynamical
+            formatVideoEncoder ?: FormatVideoEncoder.YUV420Dynamical
             // NOTE: 已知在就算支持的颜色格式中，也可能会出现oom，如YUV420_PLANAR在荣耀某款平板上
             //FormatVideoEncoder.YUV420_SEMI_PLANAR//21 V
             //FormatVideoEncoder.YUV420_PLANAR//19 V
@@ -120,9 +121,10 @@ class ViewRecorder {
         audioBitRate: Int = 192_000,
         audioSampleRate: Int = 44_100,
         isStereo: Boolean = true,
+        formatVideoEncoder: FormatVideoEncoder? = null,
     ) {
         // 视频设置
-        initJustVideo(window, view, width, fps, videoBitRate, iFrameInterval)
+        initJustVideo(window, view, width, fps, videoBitRate, iFrameInterval, formatVideoEncoder)
 
         // 音频设置
         audioEncoder = AudioEncoder(object : GetAacData {
@@ -142,9 +144,8 @@ class ViewRecorder {
                 audioEncoder.inputPCMData(frame)
             }
         })
-
         audioInitSuccess = microphoneManager.createMicrophone(
-            MediaRecorder.AudioSource.DEFAULT,
+            MediaRecorder.AudioSource.MIC,
             audioSampleRate,
             isStereo,
             false,
@@ -152,6 +153,7 @@ class ViewRecorder {
         )
         if (!audioInitSuccess) {
             // 已失败，不再初始化音频编码器
+            Log.e(TAG, "init() called with: 音频初始化失败")
             return
         }
         audioInitSuccess = audioEncoder.prepareAudioEncoder(
@@ -160,6 +162,7 @@ class ViewRecorder {
             microphoneManager.channel == AudioFormat.CHANNEL_IN_STEREO,
             microphoneManager.inputBufferSize
         )
+        Log.i(TAG, "Audio params: sampleRate=${microphoneManager.sampleRate}, channel=${microphoneManager.channel}, inputBufferSize=${microphoneManager.inputBufferSize}")
     }
 
     @Throws

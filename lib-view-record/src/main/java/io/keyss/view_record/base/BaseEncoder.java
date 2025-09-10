@@ -206,7 +206,7 @@ public abstract class BaseEncoder implements EncoderCallback {
             mediaCodec.queueInputBuffer(inBufferIndex, 0, size, pts, 0);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } catch (NullPointerException | IndexOutOfBoundsException e) {
+        } catch (Exception e) {
             Log.i(TAG, "Encoding error", e);
         }
     }
@@ -252,6 +252,8 @@ public abstract class BaseEncoder implements EncoderCallback {
         callback = new MediaCodec.Callback() {
             @Override
             public void onInputBufferAvailable(@NonNull MediaCodec mediaCodec, int inBufferIndex) {
+                //Log.i(TAG, "onInputBufferAvailable: thread="+Thread.currentThread().getName());
+                // thread=VideoEncoder or AudioEncoder
                 try {
                     inputAvailable(mediaCodec, inBufferIndex);
                 } catch (IllegalStateException e) {

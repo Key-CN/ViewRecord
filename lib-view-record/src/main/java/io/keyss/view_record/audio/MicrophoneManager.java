@@ -46,7 +46,7 @@ public class MicrophoneManager {
     //default parameters for microphone
     private int sampleRate = 44100; //hz
     private final int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-    private int channel = AudioFormat.CHANNEL_IN_STEREO;
+    private int channel = AudioFormat.CHANNEL_IN_MONO;
     protected boolean muted = false;
     private AudioPostProcessEffect audioPostProcessEffect;
     protected HandlerThread handlerThread;
@@ -89,7 +89,8 @@ public class MicrophoneManager {
     public boolean createMicrophone(int audioSource, int sampleRate, boolean isStereo,
                                     boolean echoCanceler, boolean noiseSuppressor) {
         try {
-            this.sampleRate = sampleRate;
+            int channelCount = isStereo ? 2 : 1;
+            this.sampleRate = sampleRate * channelCount;
             channel = isStereo ? AudioFormat.CHANNEL_IN_STEREO : AudioFormat.CHANNEL_IN_MONO;
             // 计算buffer大小
             setPcmBufferSize(sampleRate, channel);
@@ -97,7 +98,7 @@ public class MicrophoneManager {
             audioPostProcessEffect = new AudioPostProcessEffect(audioRecord.getAudioSessionId());
             if (echoCanceler) audioPostProcessEffect.enableEchoCanceler();
             if (noiseSuppressor) audioPostProcessEffect.enableNoiseSuppressor();
-            String chl = (isStereo) ? "Stereo" : "Mono";
+            String chl = isStereo ? "Stereo" : "Mono";
             if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
                 throw new IllegalArgumentException("Some parameters specified are not valid");
             }
@@ -154,12 +155,13 @@ public class MicrophoneManager {
      */
     protected Frame read() {
         long timeStamp = System.nanoTime() / 1000;
-        int size = audioRecord.read(pcmBuffer, 0, pcmBuffer.length);
+        byte[] pcmBufferCopy = pcmBuffer.clone();
+        int size = audioRecord.read(pcmBufferCopy, 0, pcmBufferCopy.length);
         if (size < 0) {
             Log.e(TAG, "read error: " + size);
             return null;
         }
-        return new Frame(muted ? pcmBufferMuted : customAudioEffect.process(pcmBuffer), 0, size, timeStamp);
+        return new Frame(muted ? pcmBufferMuted : customAudioEffect.process(pcmBufferCopy), 0, size, timeStamp);
     }
 
     /**
@@ -187,7 +189,8 @@ public class MicrophoneManager {
      * Get PCM buffer size
      */
     private void setPcmBufferSize(int sampleRate, int channel) {
-        BUFFER_SIZE = AudioRecord.getMinBufferSize(sampleRate, channel, audioFormat);
+        // 此大小无法保证在负载情况下录制过程顺畅，应根据预计轮询 AudioRecord 实例以获取新数据的频率，选择更大的值。
+        BUFFER_SIZE = AudioRecord.getMinBufferSize(sampleRate, channel, audioFormat) * 2;
         pcmBuffer = new byte[BUFFER_SIZE];
         pcmBufferMuted = new byte[BUFFER_SIZE];
     }

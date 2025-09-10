@@ -29,14 +29,18 @@ import java.util.List;
  */
 
 public class CodecUtil {
-
     private static final String TAG = "CodecUtil";
 
+    // v
     public static final String H264_MIME = "video/avc";
     public static final String H265_MIME = "video/hevc";
+    // a
     public static final String AAC_MIME = "audio/mp4a-latm";
-    public static final String VORBIS_MIME = "audio/ogg";
+    public static final String A3GPP_MIME = "audio/3gpp";
     public static final String OPUS_MIME = "audio/opus";
+    // ogg vorbis同一个
+    public static final String OGG_MIME = "audio/ogg";
+    public static final String VORBIS_MIME = "audio/vorbis";
 
     public enum Force {
         FIRST_COMPATIBLE_FOUND, SOFTWARE, HARDWARE

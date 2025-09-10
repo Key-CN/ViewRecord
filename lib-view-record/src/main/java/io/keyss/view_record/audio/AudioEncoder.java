@@ -37,7 +37,6 @@ import io.keyss.view_record.utils.CodecUtil;
  */
 
 public class AudioEncoder extends BaseEncoder {
-
     private final GetAacData getAacData;
     private int bitRate = 192 * 1024;  //in kbps
     private int sampleRate = 44100; //in hz
@@ -58,7 +57,8 @@ public class AudioEncoder extends BaseEncoder {
         this.maxInputSize = maxInputSize;
         this.isStereo = isStereo;
         try {
-            MediaCodecInfo encoder = chooseEncoder(CodecUtil.AAC_MIME);
+            String audioMime = CodecUtil.AAC_MIME;
+            MediaCodecInfo encoder = chooseEncoder(audioMime);
             if (encoder != null) {
                 Log.i(TAG, "Audio Encoder selected " + encoder.getName());
                 codec = MediaCodec.createByCodecName(encoder.getName());
@@ -67,8 +67,8 @@ public class AudioEncoder extends BaseEncoder {
                 return false;
             }
 
-            int channelCount = (isStereo) ? 2 : 1;
-            MediaFormat audioFormat = MediaFormat.createAudioFormat(CodecUtil.AAC_MIME, sampleRate, channelCount);
+            int channelCount = isStereo ? 2 : 1;
+            MediaFormat audioFormat = MediaFormat.createAudioFormat(audioMime, sampleRate, channelCount);
             audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
             audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, maxInputSize);
             audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
@@ -146,12 +146,12 @@ public class AudioEncoder extends BaseEncoder {
     protected MediaCodecInfo chooseEncoder(String mime) {
         List<MediaCodecInfo> mediaCodecInfoList;
         if (force == CodecUtil.Force.HARDWARE) {
-            mediaCodecInfoList = CodecUtil.getAllHardwareEncoders(CodecUtil.AAC_MIME);
+            mediaCodecInfoList = CodecUtil.getAllHardwareEncoders(mime);
         } else if (force == CodecUtil.Force.SOFTWARE) {
-            mediaCodecInfoList = CodecUtil.getAllSoftwareEncoders(CodecUtil.AAC_MIME);
+            mediaCodecInfoList = CodecUtil.getAllSoftwareEncoders(mime);
         } else {
             //Priority: hardware > software
-            mediaCodecInfoList = CodecUtil.getAllEncoders(CodecUtil.AAC_MIME, true);
+            mediaCodecInfoList = CodecUtil.getAllEncoders(mime, true);
         }
 
         Log.i(TAG, mediaCodecInfoList.size() + " audio encoders found");

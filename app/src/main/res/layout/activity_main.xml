@@ -53,11 +53,11 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <VideoView
-        android:visibility="gone"
         android:id="@+id/video_view_main_activity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="#623456"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -68,6 +68,37 @@
         android:background="#80C2FDF6"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="w,1:1">
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#FF0000"
+                android:text="红底绿字"
+                android:textColor="#00FF00"
+                android:textSize="28sp" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#0000FF"
+                android:text="蓝底红字"
+                android:textColor="#FF0000"
+                android:textSize="28sp" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#00FF00"
+                android:text="绿低蓝字"
+                android:textColor="#0000FF"
+                android:textSize="28sp" />
+        </androidx.appcompat.widget.LinearLayoutCompat>
 
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/tv_time_main_activity"
@@ -91,10 +122,12 @@
         <androidx.appcompat.widget.AppCompatTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="实际上背景应该是浅绿色"
+            android:background="#80C2FDF6"
+            android:text="实际上背景应该是浅绿色\n此背景色带了透明度所以会融合"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
+        <!-- implementationMode=performance无法录到, 因为Use a SurfaceView for the preview -->
         <androidx.camera.view.PreviewView
             android:id="@+id/preview_view_main_activity"
             android:layout_width="0dp"

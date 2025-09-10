@@ -19,6 +19,7 @@ package io.keyss.view_record.video;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
@@ -185,18 +186,13 @@ public class VideoEncoder extends BaseEncoder {
      * 2135033992对应的是{@link android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible}
      * 有限选择21、19，很多设备只有[]两种，另外两种转换可能会花屏
      * 虽然很多设备看起来支持很多颜色，但是最终转换的时候可能会花屏或者直接卡死
+     * 这个排序rk3588会崩溃，按以前的版本YUV420_PLANAR可以正常编码
      */
     private FormatVideoEncoder chooseColorDynamically(MediaCodecInfo mediaCodecInfo) {
         int[] colorFormats = mediaCodecInfo.getCapabilitiesForType(type).colorFormats;
         Log.i(TAG, "Color supported by this encoder: " + Arrays.toString(colorFormats));
         // 做一个优先选择排序
-        FormatVideoEncoder[] preferredOrder = {
-                FormatVideoEncoder.YUV420_SEMI_PLANAR,
-                FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR,
-                FormatVideoEncoder.YUV420_PACKED_PLANAR,
-                // 19,很多华为上存在问题，放最后
-                FormatVideoEncoder.YUV420_PLANAR,
-        };
+        FormatVideoEncoder[] preferredOrder = getColorPreferredOrder();
         for (FormatVideoEncoder format : preferredOrder) {
             for (int color : colorFormats) {
                 if (color == format.getFormatCodec()) {
@@ -205,6 +201,32 @@ public class VideoEncoder extends BaseEncoder {
             }
         }
         return null;
+    }
+
+    /**
+     * @return 根据已获得的信息优先选择排序的color spaces
+     */
+    private FormatVideoEncoder[] getColorPreferredOrder() {
+        String hardware = Build.HARDWARE;
+        Log.i(TAG, "getPreferredOrder() HARDWARE: " + hardware);
+        FormatVideoEncoder[] preferredOrder;
+        if (hardware.toLowerCase().startsWith("rk")) {
+            preferredOrder = new FormatVideoEncoder[]{
+                    FormatVideoEncoder.YUV420_PLANAR,
+                    FormatVideoEncoder.YUV420_SEMI_PLANAR,
+                    FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR,
+                    FormatVideoEncoder.YUV420_PACKED_PLANAR,
+            };
+        } else {
+            preferredOrder = new FormatVideoEncoder[]{
+                    FormatVideoEncoder.YUV420_SEMI_PLANAR,
+                    FormatVideoEncoder.YUV420_PACKED_SEMI_PLANAR,
+                    FormatVideoEncoder.YUV420_PACKED_PLANAR,
+                    // 19,很多华为上存在问题，放最后
+                    FormatVideoEncoder.YUV420_PLANAR,
+            };
+        }
+        return preferredOrder;
     }
 
     /**
