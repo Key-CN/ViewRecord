@@ -4,7 +4,7 @@ plugins {
 }
 
 //ext.libVersion = "1.0.2-kt1.6.10"
-ext.libVersion = "1.0.13"
+ext.libVersion = "1.0.14"
 
 android {
     namespace 'io.keyss.view_record'
@@ -41,4 +41,4 @@ dependencies {
 }
 
 // 将library上传到mavenCenter的脚本
-apply from: "../../../public/zxslLibraryMavenUploader.gradle"
+apply from: rootProject.file("gradle/ishowMavenUploader.gradle")

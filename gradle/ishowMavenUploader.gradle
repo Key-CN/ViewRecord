@@ -1,0 +1,44 @@
+apply plugin: 'maven-publish'
+
+def configFile = rootProject.file("../../public/config.properties")
+if (!configFile.exists()) {
+    throw new GradleException("Maven config not found: ${configFile.absolutePath}")
+}
+
+Properties properties = new Properties()
+configFile.withInputStream { properties.load(it) }
+
+def username = properties.getProperty("ishow.maven.username")
+def password = properties.getProperty("ishow.maven.password")
+
+afterEvaluate {
+    tasks.register("generateSourcesJar", Jar) {
+        from android.sourceSets.main.java.srcDirs
+        archiveClassifier.set("sources")
+        exclude "**/R.class"
+        exclude "**/BuildConfig.class"
+    }
+
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                groupId = "com.ishow.android"
+                artifactId = project.getName()
+                version = project.libVersion
+                artifact tasks.named("generateSourcesJar")
+                println("publications: ${groupId}:${artifactId}:${version}")
+            }
+        }
+        repositories {
+            maven {
+                url = "https://packages.aliyun.com/60b83f4e2c5969c370c5e2fc/maven/2108662-release-23uevk"
+                credentials {
+                    it.username username
+                    it.password password
+                }
+            }
+        }
+    }
+}

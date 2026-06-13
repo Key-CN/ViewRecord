@@ -87,7 +87,8 @@ class ViewRecorder {
         // 设置获取帧的方法
         videoEncoder.setFrameDataGetter(object : IFrameDataGetter {
             override fun getFrameData(): Frame {
-                return Frame(getFrameBytes())
+                val timeStamp = System.nanoTime() / 1000
+                return Frame(getFrameBytes(), timeStamp)
             }
         })
         // 通过获取一帧来初始化视频参数
@@ -162,7 +163,10 @@ class ViewRecorder {
             microphoneManager.channel == AudioFormat.CHANNEL_IN_STEREO,
             microphoneManager.inputBufferSize
         )
-        Log.i(TAG, "Audio params: sampleRate=${microphoneManager.sampleRate}, channel=${microphoneManager.channel}, inputBufferSize=${microphoneManager.inputBufferSize}")
+        Log.i(
+            TAG,
+            "Audio params: sampleRate=${microphoneManager.sampleRate}, channel=${microphoneManager.channel}, inputBufferSize=${microphoneManager.inputBufferSize}"
+        )
     }
 
     @Throws

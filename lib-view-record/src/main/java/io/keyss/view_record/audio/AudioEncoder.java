@@ -117,8 +117,8 @@ public class AudioEncoder extends BaseEncoder {
 
     @Override
     protected long calculatePts(Frame frame, long presentTimeUs) {
-        return Math.max(0, frame.getTimeStamp() - presentTimeUs);
-//        return frame.getTimeStamp();
+        //return Math.max(0, frame.getTimeStamp() - presentTimeUs);
+        return frame.getTimeStamp();
     }
 
     @Override

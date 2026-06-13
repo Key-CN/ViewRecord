@@ -42,7 +42,7 @@ public abstract class BaseEncoder implements EncoderCallback {
     private final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
     private HandlerThread handlerThread;
     // 持续输入数据的队列
-    protected BlockingQueue<Frame> queue = new ArrayBlockingQueue<>(80);
+    protected BlockingQueue<Frame> queue = new ArrayBlockingQueue<>(160);
     // 实时型
     protected boolean isRealTime = false;
     // 获取当前数据帧接口
@@ -160,7 +160,7 @@ public abstract class BaseEncoder implements EncoderCallback {
             }
         }
         queue.clear();
-        queue = new ArrayBlockingQueue<>(80);
+        queue = new ArrayBlockingQueue<>(160);
         try {
             codec.stop();
             codec.release();
